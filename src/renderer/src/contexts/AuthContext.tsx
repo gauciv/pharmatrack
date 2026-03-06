@@ -27,7 +27,9 @@ export function useAuth(): AuthContextType {
 
 export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  // When Firebase is not configured there is nothing to wait for — start unblocked.
+  // When it is configured we must wait for onAuthStateChanged before rendering.
+  const [loading, setLoading] = useState(isFirebaseConfigured)
 
   async function login(email: string, password: string): Promise<void> {
     if (!isFirebaseConfigured) {
