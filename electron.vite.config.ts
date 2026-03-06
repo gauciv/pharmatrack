@@ -14,6 +14,23 @@ export default defineConfig({
       alias: {
         '@renderer': resolve('src/renderer/src'),
         '@': resolve('src/renderer/src')
+      },
+      conditions: ['module', 'import', 'default']
+    },
+    optimizeDeps: {
+      include: [
+        'tailwind-merge',
+        '@tanstack/react-table',
+        'clsx',
+        'class-variance-authority',
+        'lucide-react',
+        'react-router-dom',
+        'firebase/app',
+        'firebase/auth',
+        'firebase/firestore'
+      ],
+      esbuildOptions: {
+        conditions: ['module', 'import', 'default']
       }
     },
     plugins: [react()]
