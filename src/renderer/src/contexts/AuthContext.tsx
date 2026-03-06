@@ -6,7 +6,7 @@ import {
   onAuthStateChanged,
   AuthError
 } from 'firebase/auth'
-import { auth } from '../lib/firebase'
+import { auth, isFirebaseConfigured } from '../lib/firebase'
 
 interface AuthContextType {
   currentUser: User | null
@@ -30,6 +30,9 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   const [loading, setLoading] = useState(true)
 
   async function login(email: string, password: string): Promise<void> {
+    if (!isFirebaseConfigured) {
+      throw new Error('Firebase is not configured. Copy .env.example to .env and fill in your Firebase project credentials.')
+    }
     try {
       await signInWithEmailAndPassword(auth, email, password)
     } catch (error) {
@@ -43,11 +46,37 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   }
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user)
+    // If Firebase is not configured with real credentials, skip auth entirely
+    if (!isFirebaseConfigured) {
       setLoading(false)
-    })
-    return unsubscribe
+      return
+    }
+
+    let settled = false
+
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (user) => {
+        settled = true
+        setCurrentUser(user)
+        setLoading(false)
+      },
+      () => {
+        // onError - Firebase connection failed
+        settled = true
+        setLoading(false)
+      }
+    )
+
+    // Safety timeout: if Firebase never responds within 5 s, unblock the UI
+    const timeout = setTimeout(() => {
+      if (!settled) setLoading(false)
+    }, 5000)
+
+    return () => {
+      unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [])
 
   const value: AuthContextType = {

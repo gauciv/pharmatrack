@@ -5,10 +5,10 @@
   "main": "./out/main/index.js",
   "homepage": ".",
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "tsc && electron-vite build",
-    "preview": "electron-vite preview",
-    "start": "electron-vite preview",
+    "dev": "env -u ELECTRON_RUN_AS_NODE electron-vite dev",
+    "build": "env -u ELECTRON_RUN_AS_NODE tsc && electron-vite build",
+    "preview": "env -u ELECTRON_RUN_AS_NODE electron-vite preview",
+    "start": "env -u ELECTRON_RUN_AS_NODE electron-vite preview",
     "postinstall": "node scripts/fix-cac-esm.js"
   },
   "dependencies": {
@@ -33,6 +33,7 @@
     "tailwind-merge": "^2.3.0"
   },
   "devDependencies": {
+    "@rollup/wasm-node": "^4.59.0",
     "@types/node": "^20.14.2",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
