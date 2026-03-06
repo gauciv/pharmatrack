@@ -145,7 +145,7 @@ export function InventoryTable({
       cell: info => (
         <button
           className="text-xs font-medium text-charcoal-800 dark:text-gray-200 hover:text-brand hover:underline text-left leading-tight transition-colors"
-          onClick={() => setViewTarget(info.row.original)}
+          onClick={e => { e.stopPropagation(); setViewTarget(info.row.original) }}
         >
           {info.getValue()}
         </button>
@@ -339,8 +339,9 @@ export function InventoryTable({
                     {!isCollapsed && rows.map((row, rowIdx) => (
                       <tr
                         key={row.id}
+                        onClick={() => setViewTarget(row.original)}
                         className={cn(
-                          'group border-b border-silver-200 dark:border-gray-700 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors',
+                          'group border-b border-silver-200 dark:border-gray-700 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors cursor-pointer',
                           selectedSet.has(row.original.id)
                             ? 'bg-blue-50/60 dark:bg-blue-900/20'
                             : rowIdx % 2 === 0

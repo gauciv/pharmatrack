@@ -128,12 +128,20 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
     }
   }
 
+  const inputCls = 'h-8 text-xs bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500'
+  const monoInputCls = 'h-8 text-xs font-mono bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100'
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full max-w-md flex flex-col p-0">
-        <SheetHeader className="shrink-0">
-          <SheetTitle>{isEdit ? 'Edit Item' : 'Add New Item'}</SheetTitle>
-          <SheetDescription>
+      <SheetContent
+        side="right"
+        className="w-full max-w-md flex flex-col p-0 bg-white dark:bg-gray-900 dark:border-gray-800"
+      >
+        <SheetHeader className="shrink-0 px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-800">
+          <SheetTitle className="dark:text-gray-100">
+            {isEdit ? 'Edit Item' : 'Add New Item'}
+          </SheetTitle>
+          <SheetDescription className="dark:text-gray-400">
             {isEdit
               ? `Editing ${item!.itemCode} — ${item!.description}`
               : 'Fill in the details to add a new inventory item.'}
@@ -149,7 +157,7 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
                   value={form.itemCode}
                   onChange={e => set('itemCode', e.target.value)}
                   placeholder="e.g. 1A 424/28"
-                  className={cn('h-8 text-xs', errors.itemCode && 'border-destructive')}
+                  className={cn(inputCls, errors.itemCode && 'border-destructive')}
                 />
                 {errors.itemCode && <p className="text-[10px] text-destructive">{errors.itemCode}</p>}
               </Field>
@@ -159,7 +167,7 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
                   onChange={e => set('vendor', e.target.value)}
                   list="vendor-list"
                   placeholder="Vendor name"
-                  className={cn('h-8 text-xs', errors.vendor && 'border-destructive')}
+                  className={cn(inputCls, errors.vendor && 'border-destructive')}
                 />
                 <datalist id="vendor-list">
                   {vendors.map(v => <option key={v} value={v} />)}
@@ -173,7 +181,7 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
                 value={form.description}
                 onChange={e => set('description', e.target.value)}
                 placeholder="Full item description"
-                className={cn('h-8 text-xs', errors.description && 'border-destructive')}
+                className={cn(inputCls, errors.description && 'border-destructive')}
               />
               {errors.description && <p className="text-[10px] text-destructive">{errors.description}</p>}
             </Field>
@@ -185,7 +193,7 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
                   onChange={e => set('category', e.target.value)}
                   list="category-list"
                   placeholder="e.g. MiniSol"
-                  className="h-8 text-xs"
+                  className={inputCls}
                 />
                 <datalist id="category-list">
                   {categories.map(c => <option key={c} value={c} />)}
@@ -197,20 +205,20 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
                   onChange={e => set('prefVendor', e.target.value)}
                   list="vendor-list"
                   placeholder="Preferred vendor"
-                  className="h-8 text-xs"
+                  className={inputCls}
                 />
               </Field>
             </div>
 
-            <div className="border-t pt-3">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Stock & Sales</p>
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Stock &amp; Sales</p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="On Hand">
                   <Input
                     type="number"
                     value={form.onHand}
                     onChange={e => set('onHand', e.target.value)}
-                    className={cn('h-8 text-xs font-mono', errors.onHand && 'border-destructive')}
+                    className={cn(monoInputCls, errors.onHand && 'border-destructive')}
                   />
                   {errors.onHand && <p className="text-[10px] text-destructive">{errors.onHand}</p>}
                 </Field>
@@ -220,7 +228,7 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
                     value={form.reorderPt}
                     onChange={e => set('reorderPt', e.target.value)}
                     placeholder="Optional"
-                    className="h-8 text-xs font-mono"
+                    className={monoInputCls}
                   />
                 </Field>
                 <Field label="On PO">
@@ -228,7 +236,7 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
                     type="number"
                     value={form.onPO}
                     onChange={e => set('onPO', e.target.value)}
-                    className="h-8 text-xs font-mono"
+                    className={monoInputCls}
                   />
                 </Field>
                 <Field label="Order Qty">
@@ -237,7 +245,7 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
                     value={form.order}
                     onChange={e => set('order', e.target.value)}
                     placeholder="Optional"
-                    className="h-8 text-xs font-mono"
+                    className={monoInputCls}
                   />
                 </Field>
                 <Field label="Sales / Week">
@@ -246,7 +254,7 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
                     step="0.1"
                     value={form.salesPerWeek}
                     onChange={e => set('salesPerWeek', e.target.value)}
-                    className={cn('h-8 text-xs font-mono', errors.salesPerWeek && 'border-destructive')}
+                    className={cn(monoInputCls, errors.salesPerWeek && 'border-destructive')}
                   />
                   {errors.salesPerWeek && <p className="text-[10px] text-destructive">{errors.salesPerWeek}</p>}
                 </Field>
@@ -255,15 +263,22 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
                     value={form.nextDeliv}
                     onChange={e => set('nextDeliv', e.target.value)}
                     placeholder="e.g. 2025-04-01"
-                    className="h-8 text-xs"
+                    className={inputCls}
                   />
                 </Field>
               </div>
             </div>
           </div>
 
-          <SheetFooter className="shrink-0">
-            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={saving}>
+          <SheetFooter className="shrink-0 px-6 py-4 border-t border-gray-200 dark:border-gray-800 dark:bg-gray-900">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              disabled={saving}
+              className="dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
               Cancel
             </Button>
             <Button type="submit" size="sm" disabled={saving}>
