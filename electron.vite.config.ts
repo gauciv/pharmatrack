@@ -13,9 +13,13 @@ export default defineConfig({
     resolve: {
       alias: {
         '@renderer': resolve('src/renderer/src'),
-        '@': resolve('src/renderer/src')
-      },
-      conditions: ['module', 'import', 'default']
+        '@': resolve('src/renderer/src'),
+        // Point directly to CJS entry — bypasses the broken .mjs wrappers entirely.
+        // esbuild processes the CJS files during optimizeDeps and emits proper
+        // ESM named exports via static exports.xxx analysis.
+        'tailwind-merge': resolve('node_modules/tailwind-merge/dist/bundle-cjs.js'),
+        '@tanstack/react-table': resolve('node_modules/@tanstack/react-table/build/lib/index.js')
+      }
     },
     optimizeDeps: {
       include: [
@@ -28,10 +32,7 @@ export default defineConfig({
         'firebase/app',
         'firebase/auth',
         'firebase/firestore'
-      ],
-      esbuildOptions: {
-        conditions: ['module', 'import', 'default']
-      }
+      ]
     },
     plugins: [react()]
   }
