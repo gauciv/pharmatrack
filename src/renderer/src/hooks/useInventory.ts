@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   subscribeToInventory,
   addInventoryItem,
@@ -9,6 +9,7 @@ import {
 } from '../lib/inventory-service'
 import { isFirebaseConfigured } from '../lib/firebase'
 import { inventorySeed } from '../lib/inventory-seed'
+import { localStore } from '../lib/local-inventory-store'
 import { InventoryItem } from '../types/inventory'
 
 export interface InventoryFilters {
@@ -19,22 +20,36 @@ export interface InventoryFilters {
 }
 
 export function useInventory(filters: InventoryFilters) {
-  const [allItems, setAllItems] = useState<InventoryItem[]>(inventorySeed)
+  const [allItems, setAllItems] = useState<InventoryItem[]>(() =>
+    isFirebaseConfigured ? inventorySeed : localStore.getItems()
+  )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Tracks whether Firestore has ever returned data in this session.
+  // Prevents showing an empty list when Firestore is configured but
+  // the collection is genuinely empty vs. still loading.
+  const hasSeenFirestoreData = useRef(false)
+
   useEffect(() => {
     setLoading(true)
+
     if (!isFirebaseConfigured) {
-      setAllItems(inventorySeed)
+      // Subscribe to the shared module-level store so all useInventory()
+      // instances stay in sync (e.g. importing CSV in Settings updates
+      // the Inventory page without any global state library).
+      setAllItems(localStore.getItems())
       setLoading(false)
-      return
+      return localStore.subscribe(() => setAllItems(localStore.getItems()))
     }
+
     try {
       const unsubscribe = subscribeToInventory((firestoreItems) => {
-        // Always use Firestore data when Firebase is configured.
-        // Seed data is only shown in local (non-Firebase) mode.
-        setAllItems(firestoreItems)
+        if (firestoreItems.length > 0) {
+          hasSeenFirestoreData.current = true
+        }
+        // Show seed data only while Firestore hasn't returned any docs yet.
+        setAllItems(hasSeenFirestoreData.current ? firestoreItems : inventorySeed)
         setLoading(false)
       })
       return unsubscribe
@@ -52,7 +67,7 @@ export function useInventory(filters: InventoryFilters) {
       // onSnapshot handles the state update
     } else {
       const newItem: InventoryItem = { ...data, id: `LOCAL-${Date.now()}` }
-      setAllItems(prev => [...prev, newItem])
+      localStore.addItem(newItem)
     }
   }, [])
 
@@ -60,7 +75,7 @@ export function useInventory(filters: InventoryFilters) {
     if (isFirebaseConfigured) {
       await updateInventoryItem(id, data)
     } else {
-      setAllItems(prev => prev.map(i => i.id === id ? { ...i, ...data } : i))
+      localStore.updateItem(id, data)
     }
   }, [])
 
@@ -68,7 +83,7 @@ export function useInventory(filters: InventoryFilters) {
     if (isFirebaseConfigured) {
       await deleteInventoryItem(id)
     } else {
-      setAllItems(prev => prev.filter(i => i.id !== id))
+      localStore.removeItem(id)
     }
   }, [])
 
@@ -76,8 +91,7 @@ export function useInventory(filters: InventoryFilters) {
     if (isFirebaseConfigured) {
       await deleteInventoryItems(ids)
     } else {
-      const set = new Set(ids)
-      setAllItems(prev => prev.filter(i => !set.has(i.id)))
+      localStore.removeItems(ids)
     }
   }, [])
 
@@ -90,7 +104,7 @@ export function useInventory(filters: InventoryFilters) {
         ...item,
         id: `LOCAL-${Date.now()}-${idx}`,
       }))
-      setAllItems(newItems)
+      localStore.setItems(newItems)
     }
   }, [])
 
