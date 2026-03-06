@@ -7,6 +7,17 @@ import { isFirebaseConfigured } from './lib/firebase'
 import Login from './pages/Login'
 import DashboardHome from './pages/DashboardHome'
 import Inventory from './pages/Inventory'
+import Forecast from './pages/Forecast'
+import Vendors from './pages/Vendors'
+import DataSync from './pages/DataSync'
+
+function wrap(child: JSX.Element): JSX.Element {
+  return (
+    <ProtectedRoute>
+      <DashboardLayout>{child}</DashboardLayout>
+    </ProtectedRoute>
+  )
+}
 
 function App(): JSX.Element {
   return (
@@ -16,46 +27,14 @@ function App(): JSX.Element {
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <DashboardHome />
-                </DashboardLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/inventory"
-            element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <Inventory />
-                </DashboardLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/reports"
-            element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <div className="p-6 text-sm text-muted-foreground">Reports — coming soon</div>
-                </DashboardLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/settings"
-            element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <div className="p-6 text-sm text-muted-foreground">Settings — coming soon</div>
-                </DashboardLayout>
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/dashboard" element={wrap(<DashboardHome />)} />
+          <Route path="/dashboard/inventory" element={wrap(<Inventory />)} />
+          <Route path="/dashboard/forecast" element={wrap(<Forecast />)} />
+          <Route path="/dashboard/vendors" element={wrap(<Vendors />)} />
+          <Route path="/dashboard/datasync" element={wrap(<DataSync />)} />
+          <Route path="/dashboard/settings" element={wrap(
+            <div className="p-6 text-sm text-muted-foreground">Settings — coming soon</div>
+          )} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </AuthProvider>

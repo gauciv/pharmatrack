@@ -2,7 +2,9 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Package,
-  BarChart3,
+  TrendingDown,
+  Building2,
+  Upload,
   Settings,
   Package2,
   X
@@ -18,7 +20,9 @@ interface SidebarProps {
 const navItems = [
   { icon: LayoutDashboard, label: 'Overview', to: '/dashboard' },
   { icon: Package, label: 'Inventory', to: '/dashboard/inventory' },
-  { icon: BarChart3, label: 'Reports', to: '/dashboard/reports' },
+  { icon: TrendingDown, label: 'Forecast', to: '/dashboard/forecast' },
+  { icon: Building2, label: 'Vendors', to: '/dashboard/vendors' },
+  { icon: Upload, label: 'Data Sync', to: '/dashboard/datasync' },
   { icon: Settings, label: 'Settings', to: '/dashboard/settings' },
 ]
 

@@ -25,6 +25,7 @@ export default defineConfig({
       include: [
         'tailwind-merge',
         '@tanstack/react-table',
+        'recharts',
         'clsx',
         'class-variance-authority',
         'lucide-react',
