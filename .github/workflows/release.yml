@@ -1,0 +1,141 @@
+name: Release
+
+# Triggered by version tags: v1.0.0  v1.2.3-beta.1  etc.
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+
+# Needed so the release job can create/publish GitHub releases.
+permissions:
+  contents: write
+
+jobs:
+  # ── Build Windows NSIS installer (.exe) ─────────────────────────────────────
+  build-windows:
+    name: Build Windows (.exe)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Cache the downloaded Electron binary — saves ~100 MB on every run.
+      - name: Cache Electron
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\electron\Cache
+          key: electron-windows-${{ hashFiles('package-lock.json') }}
+          restore-keys: electron-windows-
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Vite embeds VITE_* env vars at build time.
+      # These secrets must be added under Settings → Secrets → Actions.
+      - name: Build app (electron-vite)
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+        run: npx electron-vite build
+
+      - name: Package (electron-builder → NSIS)
+        run: npx electron-builder --win --x64 --publish never
+
+      - name: Upload Windows installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          # Matches PharmaTracker-Setup-x.y.z.exe
+          path: dist/*.exe
+          retention-days: 1
+
+  # ── Build Linux AppImage ─────────────────────────────────────────────────────
+  build-linux:
+    name: Build Linux (.AppImage)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Cache Electron
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/electron
+          key: electron-linux-${{ hashFiles('package-lock.json') }}
+          restore-keys: electron-linux-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app (electron-vite)
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+        run: npx electron-vite build
+
+      - name: Package (electron-builder → AppImage)
+        run: npx electron-builder --linux --x64 --publish never
+
+      - name: Upload Linux AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          # Matches PharmaTracker-x.y.z.AppImage
+          path: dist/*.AppImage
+          retention-days: 1
+
+  # ── Create GitHub Release and attach both binaries ──────────────────────────
+  release:
+    name: Publish GitHub Release
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Windows installer
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: artifacts
+
+      - name: Download Linux AppImage
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-appimage
+          path: artifacts
+
+      - name: Create release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          name: PharmaTracker ${{ github.ref_name }}
+          # Attaches both the .exe and the .AppImage.
+          files: artifacts/*
+          # Auto-generates release notes from commits since the last tag.
+          generate_release_notes: true
+          # Tags like v1.0.0-beta.1 are published as pre-releases automatically.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,41 @@
+appId: com.pharmatracker.app
+productName: PharmaTracker
+copyright: Copyright © 2025 PharmaTracker
+
+# electron-vite compiles everything into out/
+# electron-builder packages it from there.
+directories:
+  buildResources: resources   # place icon.ico / icon.png / icon.icns here
+  output: dist
+
+files:
+  - out/**/*
+  - package.json
+
+# ── Windows ───────────────────────────────────────────────────────────────────
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  # icon: resources/icon.ico   ← uncomment once you add resources/icon.ico
+  artifactName: ${productName}-Setup-${version}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: PharmaTracker
+
+# ── Linux ─────────────────────────────────────────────────────────────────────
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  # icon: resources/icon.png   ← uncomment once you add resources/icon.png (256×256)
+  artifactName: ${productName}-${version}.${ext}
+  category: Office
+  description: Pharmaceutical Inventory Management System
