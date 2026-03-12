@@ -49,7 +49,7 @@ export function Sidebar({ open, onClose }: SidebarProps): JSX.Element {
         <div className="shrink-0 px-4 pt-4 pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <img src={logo} alt="" className="h-6 w-6 object-contain" />
+              <img src={logo} alt="" className="h-8 w-8 object-contain" />
               <span className="text-sm font-semibold text-white tracking-tight">PharmaTracker</span>
             </div>
             <button
