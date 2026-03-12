@@ -47,8 +47,8 @@ export function Sidebar({ open, onClose }: SidebarProps): JSX.Element {
       >
         {/* Brand */}
         <div className="flex h-14 items-center justify-between px-4 shrink-0">
-          <div className="flex items-center gap-2">
-            <img src={logo} alt="PharmaTracker" className="h-7 w-7 rounded-md object-contain" />
+          <div className="flex items-center gap-2.5">
+            <img src={logo} alt="PharmaTracker" className="h-9 w-9 object-contain" />
             <span className="text-sm font-bold text-white tracking-tight">PharmaTracker</span>
           </div>
           <button

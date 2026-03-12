@@ -44,9 +44,9 @@ export default function Login(): JSX.Element {
         style={{ background: 'linear-gradient(160deg, #0A2040 0%, #0D2B52 60%, #1060C0 100%)' }}
       >
         {/* Logo */}
-        <div className="flex items-center gap-2.5">
-          <img src={logo} alt="PharmaTracker" className="h-9 w-9 rounded-lg object-contain" />
-          <span className="text-lg font-bold text-white tracking-tight">PharmaTracker</span>
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="PharmaTracker" className="h-14 w-14 object-contain" />
+          <span className="text-xl font-bold text-white tracking-tight">PharmaTracker</span>
         </div>
 
         {/* Center content */}
@@ -85,9 +85,9 @@ export default function Login(): JSX.Element {
       {/* Right Panel — Form */}
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
         {/* Mobile logo */}
-        <div className="flex md:hidden items-center gap-2 mb-8">
-          <img src={logo} alt="PharmaTracker" className="h-8 w-8 rounded-lg object-contain" />
-          <span className="text-base font-bold text-charcoal dark:text-gray-100 tracking-tight">PharmaTracker</span>
+        <div className="flex md:hidden items-center gap-2.5 mb-8">
+          <img src={logo} alt="PharmaTracker" className="h-11 w-11 object-contain" />
+          <span className="text-lg font-bold text-charcoal dark:text-gray-100 tracking-tight">PharmaTracker</span>
         </div>
 
         <div className="w-full max-w-[360px] space-y-6">
