@@ -24,7 +24,7 @@ export async function getInventoryItems(): Promise<InventoryItem[]> {
   requireFirebase('getInventoryItems')
   const snapshot = await getDocs(collection(db, COLLECTION))
   if (snapshot.empty) return []
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as InventoryItem))
+  return snapshot.docs.map(d => ({ ...d.data(), id: d.id } as InventoryItem))
 }
 
 export async function addInventoryItem(
@@ -41,8 +41,9 @@ export async function seedInventory(): Promise<void> {
   if (!existing.empty) return
   const batch = writeBatch(db)
   inventorySeed.forEach(item => {
+    const { id: _id, ...data } = item
     const ref = doc(collection(db, COLLECTION))
-    batch.set(ref, item)
+    batch.set(ref, data)
   })
   await batch.commit()
 }

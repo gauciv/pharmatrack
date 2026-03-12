@@ -1,19 +1,12 @@
+import { useMemo } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
-import { Package, Users, TrendingUp, AlertTriangle, Zap, ArrowUpRight } from 'lucide-react'
+import { Package, Users, TrendingUp, AlertTriangle, Zap, ArrowUpRight, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
-import { inventorySeed } from '../lib/inventory-seed'
+import { useInventory, InventoryFilters } from '../hooks/useInventory'
 import { cn } from '../lib/utils'
 
 const CHART_COLORS = ['#1060C0', '#0D2B52', '#3B82F6', '#60A5FA', '#93C5FD', '#2563EB', '#7C3AED', '#6B7280']
-
-const allItems = inventorySeed.filter(i => i.rowType === 'item')
-const activeSKUs = allItems.length
-const highVolumeThreshold = 1000
-const highVolumeMovers = allItems.filter(i => i.salesPerWeek >= highVolumeThreshold)
-const stockAnomalies = allItems.filter(i => i.onHand < 0)
-const totalOnHand = allItems.reduce((s, i) => s + i.onHand, 0)
-const activeVendors = [...new Set(allItems.map(i => i.vendor))].length
 
 interface StatCardProps {
   title: string
@@ -54,31 +47,54 @@ function StatCard({ title, value, sub, icon: Icon, iconColor, iconBg, valueColor
   )
 }
 
-const vendorSummary = (() => {
-  const map = new Map<string, { skus: number; onHand: number; salesPerWeek: number }>()
-  allItems.forEach(i => {
-    const v = map.get(i.vendor) ?? { skus: 0, onHand: 0, salesPerWeek: 0 }
-    map.set(i.vendor, { skus: v.skus + 1, onHand: v.onHand + i.onHand, salesPerWeek: v.salesPerWeek + i.salesPerWeek })
-  })
-  return [...map.entries()]
-    .map(([name, s]) => ({ name, ...s }))
-    .sort((a, b) => b.onHand - a.onHand)
-    .slice(0, 6)
-})()
+const emptyFilters: InventoryFilters = {
+  search: '', vendor: 'all', category: 'all', stockStatus: 'all',
+}
 
-const categoryChartData = (() => {
-  const map = new Map<string, number>()
-  allItems.forEach(i => {
-    const cat = i.category || 'Uncategorized'
-    map.set(cat, (map.get(cat) ?? 0) + 1)
-  })
-  return [...map.entries()]
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 8)
-})()
+const HIGH_VOLUME_THRESHOLD = 1000
 
 export default function DashboardHome(): JSX.Element {
+  const { allItems, loading } = useInventory(emptyFilters)
+
+  const items = useMemo(() => allItems.filter(i => i.rowType === 'item'), [allItems])
+  const activeSKUs = items.length
+  const activeVendors = useMemo(() => [...new Set(items.map(i => i.vendor))].length, [items])
+  const highVolumeMovers = useMemo(() => items.filter(i => i.salesPerWeek >= HIGH_VOLUME_THRESHOLD), [items])
+  const stockAnomalies = useMemo(() => items.filter(i => i.onHand < 0), [items])
+  const totalOnHand = useMemo(() => items.reduce((s, i) => s + i.onHand, 0), [items])
+
+  const vendorSummary = useMemo(() => {
+    const map = new Map<string, { skus: number; onHand: number; salesPerWeek: number }>()
+    items.forEach(i => {
+      const v = map.get(i.vendor) ?? { skus: 0, onHand: 0, salesPerWeek: 0 }
+      map.set(i.vendor, { skus: v.skus + 1, onHand: v.onHand + i.onHand, salesPerWeek: v.salesPerWeek + i.salesPerWeek })
+    })
+    return [...map.entries()]
+      .map(([name, s]) => ({ name, ...s }))
+      .sort((a, b) => b.onHand - a.onHand)
+      .slice(0, 6)
+  }, [items])
+
+  const categoryChartData = useMemo(() => {
+    const map = new Map<string, number>()
+    items.forEach(i => {
+      const cat = i.category || 'Uncategorized'
+      map.set(cat, (map.get(cat) ?? 0) + 1)
+    })
+    return [...map.entries()]
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8)
+  }, [items])
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <Loader2 className="h-6 w-6 animate-spin text-brand" />
+      </div>
+    )
+  }
+
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
       <div className="p-4 xl:p-6 space-y-5">
@@ -86,7 +102,6 @@ export default function DashboardHome(): JSX.Element {
           <h2 className="text-lg font-bold text-charcoal-800 dark:text-gray-100">Inventory Overview</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-            {' · '}Inventory Report 2025
           </p>
         </div>
 
@@ -99,7 +114,6 @@ export default function DashboardHome(): JSX.Element {
             icon={Package}
             iconColor="text-brand"
             iconBg="bg-brand-50 dark:bg-blue-900/30"
-            badge={{ label: '2025 data', color: 'bg-blue-50 dark:bg-blue-900/30 text-brand' }}
           />
           <StatCard
             title="Active Vendors"
@@ -112,7 +126,7 @@ export default function DashboardHome(): JSX.Element {
           <StatCard
             title="High-Volume Movers"
             value={highVolumeMovers.length}
-            sub={`≥ ${highVolumeThreshold.toLocaleString()} units/wk`}
+            sub={`\u2265 ${HIGH_VOLUME_THRESHOLD.toLocaleString()} units/wk`}
             icon={Zap}
             iconColor="text-amber-600"
             iconBg="bg-amber-50 dark:bg-amber-900/30"

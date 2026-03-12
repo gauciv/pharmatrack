@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Building2, Package, TrendingUp, ChevronRight } from 'lucide-react'
-import { inventorySeed } from '../lib/inventory-seed'
+import { Building2, Package, TrendingUp, ChevronRight, Loader2 } from 'lucide-react'
+import { useInventory, InventoryFilters } from '../hooks/useInventory'
 import { InventoryItem } from '../types/inventory'
 import { Badge } from '../components/ui/badge'
 import { cn } from '../lib/utils'
@@ -23,12 +23,17 @@ interface VendorStat {
 
 const VENDOR_COLORS = ['#1060C0', '#0D2B52', '#3B82F6', '#2563EB', '#7C3AED', '#6B7280', '#0891B2', '#059669']
 
+const emptyFilters: InventoryFilters = {
+  search: '', vendor: 'all', category: 'all', stockStatus: 'all',
+}
+
 export default function Vendors(): JSX.Element {
+  const { allItems, loading } = useInventory(emptyFilters)
   const [selectedVendor, setSelectedVendor] = useState<VendorStat | null>(null)
 
   const vendors = useMemo<VendorStat[]>(() => {
     const map = new Map<string, VendorStat>()
-    inventorySeed.filter(i => i.rowType === 'item').forEach(item => {
+    allItems.filter(i => i.rowType === 'item').forEach(item => {
       const v = map.get(item.vendor) ?? {
         name: item.vendor,
         skus: 0,
@@ -45,7 +50,15 @@ export default function Vendors(): JSX.Element {
       map.set(item.vendor, v)
     })
     return [...map.values()].sort((a, b) => b.onHand - a.onHand)
-  }, [])
+  }, [allItems])
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <Loader2 className="h-6 w-6 animate-spin text-brand" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-950 transition-colors duration-200">

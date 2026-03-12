@@ -1,4 +1,14 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { isFirebaseConfigured } from '../lib/firebase'
+import {
+  subscribeToInventory,
+  seedInventory,
+  addInventoryItem,
+  updateInventoryItem,
+  deleteInventoryItem,
+  deleteInventoryItems,
+  replaceAllInventoryItems,
+} from '../lib/inventory-service'
 import { localStore } from '../lib/local-inventory-store'
 import { InventoryItem } from '../types/inventory'
 
@@ -10,48 +20,79 @@ export interface InventoryFilters {
 }
 
 /**
- * Inventory is managed entirely through the module-level localStore
- * (initialised from inventorySeed). Firebase is used for auth only.
- * This guarantees that CRUD operations never wipe existing items and
- * that all useInventory() instances (Inventory page, Settings, etc.)
- * stay in sync without a global state library.
+ * Primary data source is Firestore with real-time sync via onSnapshot.
+ * seedInventory() populates the collection on first launch if empty.
+ * Falls back to the in-memory localStore when Firebase is not configured.
  */
 export function useInventory(filters: InventoryFilters) {
-  const [allItems, setAllItems] = useState<InventoryItem[]>(() => localStore.getItems())
+  const [allItems, setAllItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setLoading(true)
-    setAllItems(localStore.getItems())
-    setLoading(false)
-    return localStore.subscribe(() => setAllItems(localStore.getItems()))
+    if (!isFirebaseConfigured) {
+      setAllItems(localStore.getItems())
+      setLoading(false)
+      return localStore.subscribe(() => setAllItems(localStore.getItems()))
+    }
+
+    let unsubscribe: (() => void) | undefined
+
+    seedInventory()
+      .then(() => {
+        unsubscribe = subscribeToInventory((items) => {
+          setAllItems(items)
+          setLoading(false)
+        })
+      })
+      .catch((err) => {
+        setError((err as Error).message)
+        setLoading(false)
+      })
+
+    return () => unsubscribe?.()
   }, [])
 
   // --- CRUD ---
 
   const addItem = useCallback(async (data: Omit<InventoryItem, 'id'>): Promise<void> => {
-    const newItem: InventoryItem = { ...data, id: `LOCAL-${Date.now()}` }
-    localStore.addItem(newItem)
+    if (!isFirebaseConfigured) {
+      localStore.addItem({ ...data, id: `LOCAL-${Date.now()}` })
+      return
+    }
+    await addInventoryItem(data)
   }, [])
 
   const updateItem = useCallback(async (id: string, data: Partial<InventoryItem>): Promise<void> => {
-    localStore.updateItem(id, data)
+    if (!isFirebaseConfigured) {
+      localStore.updateItem(id, data)
+      return
+    }
+    await updateInventoryItem(id, data)
   }, [])
 
   const deleteItem = useCallback(async (id: string): Promise<void> => {
-    localStore.removeItem(id)
+    if (!isFirebaseConfigured) {
+      localStore.removeItem(id)
+      return
+    }
+    await deleteInventoryItem(id)
   }, [])
 
   const deleteItems = useCallback(async (ids: string[]): Promise<void> => {
-    localStore.removeItems(ids)
+    if (!isFirebaseConfigured) {
+      localStore.removeItems(ids)
+      return
+    }
+    await deleteInventoryItems(ids)
   }, [])
 
   const replaceAll = useCallback(async (items: Omit<InventoryItem, 'id'>[]): Promise<void> => {
-    const newItems: InventoryItem[] = items.map((item, idx) => ({
-      ...item,
-      id: `LOCAL-${Date.now()}-${idx}`,
-    }))
-    localStore.setItems(newItems)
+    if (!isFirebaseConfigured) {
+      localStore.setItems(items.map((item, idx) => ({ ...item, id: `LOCAL-${Date.now()}-${idx}` })))
+      return
+    }
+    await replaceAllInventoryItems(items)
   }, [])
 
   // --- Filtering ---
@@ -89,7 +130,7 @@ export function useInventory(filters: InventoryFilters) {
     items: filtered,
     allItems,
     loading,
-    error: null,
+    error,
     vendors,
     categories,
     total: allItems.filter(i => i.rowType === 'item').length,
