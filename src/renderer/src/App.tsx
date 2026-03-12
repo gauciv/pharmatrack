@@ -1,9 +1,11 @@
+import { useState, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { DashboardLayout } from './components/layout/DashboardLayout'
 import { FirebaseSetupModal } from './components/FirebaseSetupModal'
+import { SplashScreen } from './components/SplashScreen'
 import { isFirebaseConfigured } from './lib/firebase'
 import Login from './pages/Login'
 import DashboardHome from './pages/DashboardHome'
@@ -21,8 +23,12 @@ function wrap(child: JSX.Element): JSX.Element {
 }
 
 function App(): JSX.Element {
+  const [showSplash, setShowSplash] = useState(true)
+  const hideSplash = useCallback(() => setShowSplash(false), [])
+
   return (
     <ThemeProvider>
+      {showSplash && <SplashScreen onFinished={hideSplash} />}
       <BrowserRouter>
         <FirebaseSetupModal open={!isFirebaseConfigured} />
         <AuthProvider>
