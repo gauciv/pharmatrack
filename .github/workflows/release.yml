@@ -86,6 +86,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Re-run compatibility patches explicitly — npm ci may silently skip
+      # postinstall when optional native deps are missing (npm bug #4828).
+      - name: Apply compatibility patches
+        run: node scripts/fix-cac-esm.js
+
       - name: Build app (electron-vite)
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}

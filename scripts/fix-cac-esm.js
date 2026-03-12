@@ -82,5 +82,10 @@ module.exports.xxhashBase16    = wasm.xxhashBase16
 `
     )
     console.log('[postinstall] Patched rollup/dist/native.js → @rollup/wasm-node.')
+  } else {
+    console.log('[postinstall] rollup/dist/native.js already patched, skipping.')
   }
+} else {
+  console.warn('[postinstall] WARNING: @rollup/wasm-node/dist/native.js not found at', wasmNative)
+  console.warn('[postinstall] Rollup WASM patch NOT applied — Linux builds may fail.')
 }
