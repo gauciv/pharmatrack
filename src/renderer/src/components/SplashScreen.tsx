@@ -22,7 +22,7 @@ export function SplashScreen({ onFinished }: { onFinished: () => void }): JSX.El
         transition: 'opacity 500ms ease-out',
       }}
     >
-      <img src={logo} alt="" className="h-16 w-16 object-contain animate-pulse" />
+      <img src={logo} alt="" className="h-48 w-48 object-contain animate-pulse" />
       <span className="text-lg font-semibold text-white tracking-tight">PharmaTracker</span>
     </div>
   )

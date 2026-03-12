@@ -37,6 +37,20 @@
         "Add": true,
         "explaining": true,
         "critical/low/healthy/": true,
-        "default": true
+        "default": true,
+        "/^cd \"c:\\\\Users\\\\Justin\\\\Documents\\\\projects\\\\wonderwoman\" ; git add src/renderer/src/pages/Login\\.tsx ; git commit -m \"\\$\\(cat <<'EOF'\nfix: center larger logo on login right panel, remove left-panel logo\n\nReplace all previous logo placements with a single centered 80px\nlogo above the welcome heading on the right \\(form\\) panel\\. Remove\nthe logo from the left brand panel, keeping only the text\\.\n\nCo-Authored-By: Claude Opus 4\\.6 <noreply@anthropic\\.com>\nEOF\n\\)\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "The": true,
+        "not": true,
+        "DashboardLayout": true,
+        "unnecessary": true,
+        "Fix:": true,
+        "child": true,
+        "matching": true,
+        "ItemSheet": true,
+        "outside": true,
+        "with": true
     }
 }
