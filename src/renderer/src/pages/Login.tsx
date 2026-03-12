@@ -45,7 +45,6 @@ export default function Login(): JSX.Element {
       >
         {/* Brand text */}
         <div className="flex items-center gap-2.5">
-          <img src={logo} alt="" className="h-8 w-8 object-contain" />
           <span className="text-lg font-semibold text-white tracking-tight">PharmaTracker</span>
         </div>
 
@@ -86,8 +85,8 @@ export default function Login(): JSX.Element {
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
         <div className="w-full max-w-[360px] space-y-6">
           {/* Logo + Heading */}
-          <div className="space-y-4">
-            <img src={logo} alt="PharmaTracker" className="h-10 w-10 object-contain" />
+          <div className="flex flex-col items-center text-center space-y-4">
+            <img src={logo} alt="PharmaTracker" className="h-20 w-20 object-contain" />
             <div className="space-y-1">
               <h2 className="text-2xl font-semibold text-charcoal-900 dark:text-gray-50 tracking-tight">Welcome back</h2>
               <p className="text-sm text-muted-foreground">Sign in to your account to continue</p>
