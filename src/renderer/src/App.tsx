@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
@@ -29,7 +29,7 @@ function App(): JSX.Element {
   return (
     <ThemeProvider>
       {showSplash && <SplashScreen onFinished={hideSplash} />}
-      <BrowserRouter>
+      <HashRouter>
         <FirebaseSetupModal open={!isFirebaseConfigured} />
         <AuthProvider>
           <Routes>
@@ -43,7 +43,7 @@ function App(): JSX.Element {
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </AuthProvider>
-      </BrowserRouter>
+      </HashRouter>
     </ThemeProvider>
   )
 }
