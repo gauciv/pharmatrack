@@ -51,6 +51,14 @@
         "matching": true,
         "ItemSheet": true,
         "outside": true,
-        "with": true
+        "with": true,
+        "priority.": true,
+        "so": true,
+        "Remove": true,
+        "ready-to-show": true,
+        "via": true,
+        "Ctrl+Shift+I": true,
+        "Splash": true,
+        "2x": true
     }
 }

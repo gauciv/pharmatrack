@@ -40,17 +40,16 @@ export function Sidebar({ open, onClose }: SidebarProps): JSX.Element {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-52 flex-col transition-transform duration-200 md:relative md:translate-x-0 md:z-auto',
+          'fixed inset-y-0 left-0 z-50 flex w-56 flex-col transition-transform duration-200 md:relative md:translate-x-0 md:z-auto',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
         style={{ background: 'linear-gradient(180deg, #0A2040 0%, #0D2B52 100%)' }}
       >
         {/* Brand */}
-        <div className="shrink-0 px-4 pt-4 pb-3">
+        <div className="shrink-0 px-5 pt-6 pb-5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <img src={logo} alt="" className="h-8 w-8 object-contain" />
-              <span className="text-sm font-semibold text-white tracking-tight">PharmaTracker</span>
+            <div className="flex items-center gap-2.5">
+              <span className="text-lg font-bold text-white tracking-tight whitespace-nowrap">PharmaTracker</span>
             </div>
             <button
               onClick={onClose}
@@ -61,7 +60,7 @@ export function Sidebar({ open, onClose }: SidebarProps): JSX.Element {
           </div>
         </div>
 
-        <Separator className="bg-white/10" />
+        <Separator className="bg-white/10 mx-4" />
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">

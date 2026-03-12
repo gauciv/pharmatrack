@@ -173,7 +173,7 @@ export default function DashboardHome(): JSX.Element {
                   </Pie>
                   <Tooltip
                     contentStyle={{ fontSize: 11, padding: '4px 8px', borderRadius: 6 }}
-                    formatter={(v: number, name: string) => [v, name]}
+                    formatter={(v, name) => [v ?? 0, name ?? '']}
                   />
                   <Legend
                     iconSize={8}
