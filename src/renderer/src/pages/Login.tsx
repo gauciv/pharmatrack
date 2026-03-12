@@ -40,19 +40,19 @@ export default function Login(): JSX.Element {
     <div className="flex h-screen w-screen overflow-hidden bg-white dark:bg-gray-950 transition-colors duration-200">
       {/* Left Panel — Brand (always dark navy, no dark: needed) */}
       <div
-        className="hidden md:flex md:w-2/5 lg:w-[38%] flex-col justify-between p-8 xl:p-12"
+        className="hidden md:flex md:w-2/5 lg:w-[38%] flex-col justify-between p-12 xl:p-12"
         style={{ background: 'linear-gradient(160deg, #0A2040 0%, #0D2B52 60%, #1060C0 100%)' }}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <img src={logo} alt="PharmaTracker" className="h-14 w-14 object-contain" />
-          <span className="text-xl font-bold text-white tracking-tight">PharmaTracker</span>
+        {/* Brand text */}
+        <div className="flex items-center gap-2.5">
+          <img src={logo} alt="" className="h-8 w-8 object-contain" />
+          <span className="text-lg font-semibold text-white tracking-tight">PharmaTracker</span>
         </div>
 
         {/* Center content */}
         <div className="space-y-8">
           <div className="space-y-3">
-            <h1 className="text-3xl xl:text-4xl font-extrabold text-white leading-tight">
+            <h1 className="text-3xl xl:text-4xl font-semibold text-white leading-tight">
               Inventory<br />Management<br />System
             </h1>
             <p className="text-sm text-blue-200/80 leading-relaxed max-w-[260px]">
@@ -78,23 +78,20 @@ export default function Login(): JSX.Element {
 
         {/* Footer */}
         <p className="text-xs text-blue-300/50">
-          &copy; {new Date().getFullYear()} PharmaTracker. All rights reserved.
+          &copy; {new Date().getFullYear()} Gauciv. All rights reserved.
         </p>
       </div>
 
       {/* Right Panel — Form */}
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-        {/* Mobile logo */}
-        <div className="flex md:hidden items-center gap-2.5 mb-8">
-          <img src={logo} alt="PharmaTracker" className="h-11 w-11 object-contain" />
-          <span className="text-lg font-bold text-charcoal dark:text-gray-100 tracking-tight">PharmaTracker</span>
-        </div>
-
         <div className="w-full max-w-[360px] space-y-6">
-          {/* Heading */}
-          <div className="space-y-1">
-            <h2 className="text-2xl font-bold text-charcoal-900 dark:text-gray-50 tracking-tight">Welcome back</h2>
-            <p className="text-sm text-muted-foreground">Sign in to your account to continue</p>
+          {/* Logo + Heading */}
+          <div className="space-y-4">
+            <img src={logo} alt="PharmaTracker" className="h-10 w-10 object-contain" />
+            <div className="space-y-1">
+              <h2 className="text-2xl font-semibold text-charcoal-900 dark:text-gray-50 tracking-tight">Welcome back</h2>
+              <p className="text-sm text-muted-foreground">Sign in to your account to continue</p>
+            </div>
           </div>
 
           {/* Form */}
@@ -108,7 +105,7 @@ export default function Login(): JSX.Element {
 
             {/* Email */}
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-xs font-semibold text-charcoal-700 dark:text-gray-300 uppercase tracking-wide">
+              <Label htmlFor="email" className="text-xs font-medium text-charcoal-700 dark:text-gray-300">
                 Email Address
               </Label>
               <Input
@@ -125,7 +122,7 @@ export default function Login(): JSX.Element {
 
             {/* Password */}
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-xs font-semibold text-charcoal-700 dark:text-gray-300 uppercase tracking-wide">
+              <Label htmlFor="password" className="text-xs font-medium text-charcoal-700 dark:text-gray-300">
                 Password
               </Label>
               <div className="relative">

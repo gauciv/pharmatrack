@@ -46,17 +46,19 @@ export function Sidebar({ open, onClose }: SidebarProps): JSX.Element {
         style={{ background: 'linear-gradient(180deg, #0A2040 0%, #0D2B52 100%)' }}
       >
         {/* Brand */}
-        <div className="flex h-14 items-center justify-between px-4 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <img src={logo} alt="PharmaTracker" className="h-9 w-9 object-contain" />
-            <span className="text-sm font-bold text-white tracking-tight">PharmaTracker</span>
+        <div className="shrink-0 px-4 pt-4 pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img src={logo} alt="" className="h-6 w-6 object-contain" />
+              <span className="text-sm font-semibold text-white tracking-tight">PharmaTracker</span>
+            </div>
+            <button
+              onClick={onClose}
+              className="flex h-6 w-6 items-center justify-center rounded text-white/60 hover:text-white hover:bg-white/10 transition-colors md:hidden"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="md:hidden flex h-6 w-6 items-center justify-center rounded text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
 
         <Separator className="bg-white/10" />
