@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   TrendingDown, AlertTriangle, ChevronRight, List, Building2,
-  FileSpreadsheet, FileText, Filter,
+  FileSpreadsheet, FileText, Filter, HelpCircle,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -20,6 +20,9 @@ import {
   RESTOCK_LEAD_WEEKS,
 } from '../lib/forecast-utils'
 import { exportForecastCSV, exportForecastPDF } from '../lib/forecast-export'
+import {
+  Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '../components/ui/dialog'
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -270,9 +273,59 @@ export default function Forecast(): JSX.Element {
             </SelectContent>
           </Select>
 
-          <p className="text-[10px] text-muted-foreground ml-auto">
-            Runway = On Hand &divide; Sales/Week &middot; 8-week restock target
-          </p>
+          <Dialog>
+            <DialogTrigger asChild>
+              <button
+                className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors rounded-md px-1.5 py-0.5 hover:bg-gray-100 dark:hover:bg-gray-800"
+                title="How does forecasting work?"
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">How it works</span>
+              </button>
+            </DialogTrigger>
+            <DialogContent className="dark:bg-gray-900 dark:border-gray-700 max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-charcoal-800 dark:text-gray-100">Understanding Forecast & Restock</DialogTitle>
+                <DialogDescription>How each metric is calculated and what it means for your inventory.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 text-sm text-charcoal-700 dark:text-gray-300">
+                <div>
+                  <h4 className="font-semibold text-charcoal-800 dark:text-gray-100 mb-1">Runway (weeks)</h4>
+                  <p className="text-xs leading-relaxed">
+                    Estimated weeks of stock remaining, calculated as <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">On Hand &divide; Sales per Week</span>.
+                    This tells you how long current stock will last at the current sales rate.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-charcoal-800 dark:text-gray-100 mb-1">Status levels</h4>
+                  <ul className="text-xs space-y-1.5 leading-relaxed">
+                    <li><span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1.5" />
+                      <strong>Critical (&lt;2 weeks):</strong> Stock may run out before a restock order arrives (lead time ~2 weeks).</li>
+                    <li><span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5" />
+                      <strong>Low (2–4 weeks):</strong> Stock is below the safety threshold. Consider reordering soon.</li>
+                    <li><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1.5" />
+                      <strong>Healthy (4+ weeks):</strong> Sufficient stock to cover near-term demand.</li>
+                    <li><span className="inline-block w-2 h-2 rounded-full bg-gray-400 mr-1.5" />
+                      <strong>No Forecast:</strong> Items with zero or no recorded weekly sales &mdash; runway cannot be calculated.</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-charcoal-800 dark:text-gray-100 mb-1">Suggested order</h4>
+                  <p className="text-xs leading-relaxed">
+                    For critical and low items, a reorder quantity is suggested using <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">(Sales/Week &times; 8) &minus; On Hand</span>.
+                    The target is 8 weeks of coverage to provide a comfortable buffer.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-charcoal-800 dark:text-gray-100 mb-1">Data source</h4>
+                  <p className="text-xs leading-relaxed">
+                    All figures come from your live inventory data &mdash; on-hand quantities and weekly sales velocity are
+                    pulled directly from your connected data source in real time.
+                  </p>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
