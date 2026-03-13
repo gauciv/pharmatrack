@@ -4,7 +4,7 @@ import { ForecastRow } from './forecast-utils'
 
 // ─── CSV Export ───────────────────────────────────────────────────────────────
 
-export function exportForecastCSV(rows: ForecastRow[]): void {
+export function exportForecastCSV(rows: ForecastRow[], fileName?: string): void {
   const headers = [
     'Item Code', 'Description', 'Vendor', 'Category',
     'On Hand', 'Sales/Wk', 'Runway (wks)', 'Status', 'Suggested Order',
@@ -33,14 +33,14 @@ export function exportForecastCSV(rows: ForecastRow[]): void {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `pharma-forecast-${new Date().toISOString().slice(0, 10)}.csv`
+  a.download = `${fileName || `pharma-forecast-${new Date().toISOString().slice(0, 10)}`}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }
 
 // ─── PDF Export ───────────────────────────────────────────────────────────────
 
-export function exportForecastPDF(rows: ForecastRow[]): void {
+export function exportForecastPDF(rows: ForecastRow[], fileName?: string): void {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
 
   // Header
@@ -96,5 +96,5 @@ export function exportForecastPDF(rows: ForecastRow[]): void {
     },
   })
 
-  doc.save(`pharma-forecast-${new Date().toISOString().slice(0, 10)}.pdf`)
+  doc.save(`${fileName || `pharma-forecast-${new Date().toISOString().slice(0, 10)}`}.pdf`)
 }

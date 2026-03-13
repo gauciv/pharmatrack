@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import {
   TrendingDown, AlertTriangle, ChevronRight, List, Building2,
-  FileSpreadsheet, FileText, Filter, HelpCircle,
+  Download, Filter, HelpCircle,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -20,6 +20,9 @@ import {
   RESTOCK_LEAD_WEEKS,
 } from '../lib/forecast-utils'
 import { exportForecastCSV, exportForecastPDF } from '../lib/forecast-export'
+import {
+  ExportPreviewModal, buildExportFileName, type ExportFormat,
+} from '../components/ExportPreviewModal'
 import {
   Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '../components/ui/dialog'
@@ -184,6 +187,9 @@ export default function Forecast(): JSX.Element {
   const [statusFilter, setStatusFilter] = useState<'all' | 'critical' | 'low' | 'healthy'>('all')
   const [viewMode, setViewMode] = useState<'flat' | 'vendor'>('flat')
 
+  // Export modal state
+  const [exportOpen, setExportOpen] = useState(false)
+
   // Compute forecast rows with filters
   const forecastRows = useMemo(() => {
     let items = allItems
@@ -193,6 +199,14 @@ export default function Forecast(): JSX.Element {
     if (statusFilter !== 'all') rows = rows.filter(r => r.status === statusFilter)
     return rows
   }, [allItems, vendorFilter, categoryFilter, statusFilter])
+
+  const exportFilters = { vendor: vendorFilter, category: categoryFilter, status: statusFilter }
+  const exportFileName = buildExportFileName('Forecast', exportFilters)
+
+  const handleExport = useCallback((fileName: string, format: ExportFormat) => {
+    if (format === 'csv') exportForecastCSV(forecastRows, fileName)
+    else exportForecastPDF(forecastRows, fileName)
+  }, [forecastRows])
 
   // Chart data
   const runwayBuckets = useMemo(() => buildRunwayBuckets(forecastRows), [forecastRows])
@@ -221,19 +235,10 @@ export default function Forecast(): JSX.Element {
               variant="outline"
               size="sm"
               className="h-7 px-2.5 text-[11px] gap-1.5"
-              onClick={() => exportForecastCSV(forecastRows)}
+              onClick={() => setExportOpen(true)}
               disabled={forecastRows.length === 0}
             >
-              <FileSpreadsheet className="h-3 w-3 text-emerald-600" /> CSV
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2.5 text-[11px] gap-1.5"
-              onClick={() => exportForecastPDF(forecastRows)}
-              disabled={forecastRows.length === 0}
-            >
-              <FileText className="h-3 w-3 text-red-500" /> PDF
+              <Download className="h-3 w-3" /> Export
             </Button>
           </div>
         </div>
@@ -455,6 +460,16 @@ export default function Forecast(): JSX.Element {
           )}
         </div>
       </div>
+
+      <ExportPreviewModal
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        source="Forecast"
+        filters={exportFilters}
+        itemCount={forecastRows.length}
+        defaultFileName={exportFileName}
+        onExport={handleExport}
+      />
     </div>
   )
 }
