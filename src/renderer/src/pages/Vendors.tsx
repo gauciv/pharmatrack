@@ -92,7 +92,7 @@ export default function Vendors(): JSX.Element {
                       <Package className="h-3 w-3" />{v.skus} SKUs
                     </span>
                     {v.categories.length > 0 && (
-                      <span className="text-[10px] text-silver-400">
+                      <span className="text-[10px] text-silver-400 dark:text-gray-500">
                         {v.categories.slice(0, 2).join(', ')}{v.categories.length > 2 ? ` +${v.categories.length - 2}` : ''}
                       </span>
                     )}
@@ -110,7 +110,7 @@ export default function Vendors(): JSX.Element {
                   </p>
                   <p className="text-[10px] text-muted-foreground">sales/wk</p>
                 </div>
-                <ChevronRight className="h-4 w-4 text-silver-400 group-hover:text-brand transition-colors ml-2 shrink-0" />
+                <ChevronRight className="h-4 w-4 text-silver-400 dark:text-gray-500 group-hover:text-brand transition-colors ml-2 shrink-0" />
               </div>
             </button>
           ))}
