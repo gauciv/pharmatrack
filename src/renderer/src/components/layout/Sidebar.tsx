@@ -40,7 +40,7 @@ export function Sidebar({ open, onClose }: SidebarProps): JSX.Element {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-56 flex-col transition-transform duration-200 md:relative md:translate-x-0 md:z-auto',
+          'fixed inset-y-0 left-0 z-50 flex w-56 flex-col overflow-hidden transition-transform duration-200 md:relative md:translate-x-0 md:z-auto',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
         style={{ background: 'linear-gradient(180deg, #0A2040 0%, #0D2B52 100%)' }}
