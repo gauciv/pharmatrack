@@ -98,9 +98,9 @@ export function Sidebar({ open, onClose }: SidebarProps): JSX.Element {
 
         <Separator className="bg-white/10" />
 
-        {/* Version */}
+        {/* Footer */}
         <div className="px-4 py-3 shrink-0">
-          <p className="text-[10px] text-blue-300/40">v1.0.0 · 2025</p>
+          <p className="text-[10px] text-blue-300/40">PharmaTracker</p>
         </div>
       </aside>
     </>
