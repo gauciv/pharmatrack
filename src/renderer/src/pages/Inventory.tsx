@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Search, Filter, RefreshCw, Package, Plus, Trash2 } from 'lucide-react'
+import { useState, useCallback } from 'react'
+import { Search, Filter, RefreshCw, Package, Plus, Trash2, Download } from 'lucide-react'
 import { useInventory, InventoryFilters } from '../hooks/useInventory'
 import { InventoryTable } from '../components/inventory/InventoryTable'
 import { ItemSheet } from '../components/inventory/ItemSheet'
@@ -24,6 +24,10 @@ import {
   AlertDialogTitle,
 } from '../components/ui/alert-dialog'
 import { InventoryItem } from '../types/inventory'
+import { exportInventoryCSV, exportInventoryPDF } from '../lib/inventory-export'
+import {
+  ExportPreviewModal, buildExportFileName, type ExportFormat,
+} from '../components/ExportPreviewModal'
 
 export default function Inventory(): JSX.Element {
   const [filters, setFilters] = useState<InventoryFilters>({
@@ -43,6 +47,15 @@ export default function Inventory(): JSX.Element {
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+
+  // Export modal state
+  const [exportOpen, setExportOpen] = useState(false)
+  const exportFilters = { vendor: filters.vendor, category: filters.category, status: filters.stockStatus }
+  const exportFileName = buildExportFileName('Inventory', exportFilters)
+  const handleExport = useCallback((fileName: string, format: ExportFormat) => {
+    if (format === 'csv') exportInventoryCSV(items, fileName)
+    else exportInventoryPDF(items, fileName)
+  }, [items])
 
   function openAdd(): void {
     setEditTarget(null)
@@ -108,6 +121,15 @@ export default function Inventory(): JSX.Element {
                 Delete {selectedIds.length} selected
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2.5 text-[11px] gap-1.5"
+              onClick={() => setExportOpen(true)}
+              disabled={items.length === 0}
+            >
+              <Download className="h-3 w-3" /> Export
+            </Button>
             {hasActiveFilters && (
               <Button
                 variant="ghost"
@@ -212,6 +234,17 @@ export default function Inventory(): JSX.Element {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Export preview */}
+      <ExportPreviewModal
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        source="Inventory"
+        filters={exportFilters}
+        itemCount={items.length}
+        defaultFileName={exportFileName}
+        onExport={handleExport}
+      />
     </>
   )
 }
