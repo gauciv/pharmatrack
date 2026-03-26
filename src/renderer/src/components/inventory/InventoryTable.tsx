@@ -44,6 +44,7 @@ import {
   DialogTitle,
 } from '../ui/dialog'
 import { cn } from '../../lib/utils'
+import { formatExpiryDate } from '../../lib/inventory-expiry'
 
 interface InventoryTableProps {
   items: InventoryItem[]
@@ -179,6 +180,38 @@ export function InventoryTable({
       },
       size: 90,
     }),
+    columnHelper.display({
+      id: 'expiry',
+      header: 'Expiry / FIFO',
+      cell: info => {
+        const item = info.row.original
+        if (!item.lotTracking?.length) {
+          return <span className="text-[11px] text-silver-400">Not tracked</span>
+        }
+
+        return (
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-1.5">
+              <span className={cn(
+                'text-[11px] font-medium',
+                item.hasExpiredStock ? 'text-destructive' : 'text-charcoal-800 dark:text-gray-200'
+              )}>
+                {formatExpiryDate(item.expiryDate)}
+              </span>
+              {item.hasExpiredStock && (
+                <Badge variant="destructive" className="px-1.5 py-0 text-[10px]">
+                  Expired
+                </Badge>
+              )}
+            </div>
+            <div className="text-[10px] text-muted-foreground">
+              FIFO: <span className="font-mono">{item.fifoLotNumber ?? '—'}</span>
+            </div>
+          </div>
+        )
+      },
+      size: 170,
+    }),
     columnHelper.accessor('salesPerWeek', {
       header: 'Sales/Wk',
       cell: info => <span className="font-mono text-xs text-charcoal-700 dark:text-gray-300">{info.getValue().toLocaleString()}</span>,
@@ -243,7 +276,7 @@ export function InventoryTable({
   })
 
   const sortedRows = table.getRowModel().rows
-  const COL_COUNT = 8
+  const COL_COUNT = 9
 
   const groupedByVendor = useMemo(() => {
     const groups: { vendor: string; rows: typeof sortedRows }[] = []
@@ -445,6 +478,17 @@ export function InventoryTable({
               <DetailRow label="Reorder Pt" value={viewTarget.reorderPt != null ? viewTarget.reorderPt.toLocaleString() : '—'} />
               <DetailRow label="Order Qty" value={viewTarget.order != null ? viewTarget.order.toLocaleString() : '—'} />
               <DetailRow label="Next Delivery" value={viewTarget.nextDeliv || '—'} />
+              <DetailRow label="Expiry" value={formatExpiryDate(viewTarget.expiryDate)} />
+              <DetailRow label="FIFO Lot" value={<span className="font-mono">{viewTarget.fifoLotNumber || '—'}</span>} />
+              <DetailRow label="Tracked Lots" value={viewTarget.lotCount != null ? viewTarget.lotCount.toLocaleString() : '0'} />
+              <DetailRow label="Expired Qty" value={
+                <span className={cn(
+                  'font-mono font-semibold',
+                  (viewTarget.expiredQuantity ?? 0) > 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'
+                )}>
+                  {(viewTarget.expiredQuantity ?? 0).toLocaleString()}
+                </span>
+              } />
               <DetailRow label="Sales / Week" value={<span className="font-mono">{viewTarget.salesPerWeek.toLocaleString()}</span>} />
               {viewTarget.salesPerWeek > 0 && (
                 <DetailRow label="Weeks of Stock" value={

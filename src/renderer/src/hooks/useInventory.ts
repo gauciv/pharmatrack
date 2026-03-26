@@ -11,12 +11,14 @@ import {
 } from '../lib/inventory-service'
 import { localStore } from '../lib/local-inventory-store'
 import { InventoryItem } from '../types/inventory'
+import { enrichInventoryItem } from '../lib/inventory-expiry'
 
 export interface InventoryFilters {
   search: string
   vendor: string
   category: string
   stockStatus: 'all' | 'in-stock' | 'low-stock' | 'out-of-stock'
+  expiryStatus: 'all' | 'untracked' | 'expired' | 'not-expired'
 }
 
 /**
@@ -25,15 +27,15 @@ export interface InventoryFilters {
  * Falls back to the in-memory localStore when Firebase is not configured.
  */
 export function useInventory(filters: InventoryFilters) {
-  const [allItems, setAllItems] = useState<InventoryItem[]>([])
+  const [sourceItems, setSourceItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isFirebaseConfigured) {
-      setAllItems(localStore.getItems())
+      setSourceItems(localStore.getItems())
       setLoading(false)
-      return localStore.subscribe(() => setAllItems(localStore.getItems()))
+      return localStore.subscribe(() => setSourceItems(localStore.getItems()))
     }
 
     let unsubscribe: (() => void) | undefined
@@ -41,7 +43,7 @@ export function useInventory(filters: InventoryFilters) {
     seedInventory()
       .then(() => {
         unsubscribe = subscribeToInventory((items) => {
-          setAllItems(items)
+          setSourceItems(items)
           setLoading(false)
         })
       })
@@ -52,6 +54,8 @@ export function useInventory(filters: InventoryFilters) {
 
     return () => unsubscribe?.()
   }, [])
+
+  const allItems = useMemo(() => sourceItems.map(item => enrichInventoryItem(item)), [sourceItems])
 
   // --- CRUD ---
 
@@ -115,6 +119,13 @@ export function useInventory(filters: InventoryFilters) {
         if (filters.stockStatus === 'low-stock')
           return i.onHand > 0 && i.reorderPt !== null && i.onHand <= i.reorderPt
         return i.onHand > 0 && (i.reorderPt === null || i.onHand > i.reorderPt)
+      })
+    }
+    if (filters.expiryStatus !== 'all') {
+      result = result.filter(i => {
+        if (filters.expiryStatus === 'untracked') return !i.lotTracking || i.lotTracking.length === 0
+        if (filters.expiryStatus === 'expired') return (i.expiredQuantity ?? 0) > 0
+        return (i.lotTracking?.length ?? 0) > 0 && (i.expiredQuantity ?? 0) === 0
       })
     }
     return result

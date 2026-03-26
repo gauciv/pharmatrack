@@ -19,12 +19,14 @@ import {
   AlertDialogTitle,
 } from '../components/ui/alert-dialog'
 import { cn } from '../lib/utils'
+import { formatExpiryDate } from '../lib/inventory-expiry'
+import { downloadPdf, downloadTextFile } from '../lib/export-download'
 
 // ─── Export helpers ───────────────────────────────────────────────────────────
 
 function exportToCSV(items: InventoryItem[]): void {
   const headers = ['Item Code', 'Description', 'Vendor', 'Category', 'Pref Vendor',
-    'On Hand', 'Reorder Pt', 'Order Qty', 'On PO', 'Next Delivery', 'Sales/Week']
+    'On Hand', 'Expiry', 'FIFO Lot', 'Expired Qty', 'Reorder Pt', 'Order Qty', 'On PO', 'Next Delivery', 'Sales/Week']
   const escape = (v: string | number | null | undefined) => {
     if (v == null) return ''
     const s = String(v)
@@ -33,16 +35,15 @@ function exportToCSV(items: InventoryItem[]): void {
   const rows = items.map(i => [
     escape(i.itemCode), escape(i.description), escape(i.vendor),
     escape(i.category), escape(i.prefVendor), i.onHand,
+    escape(formatExpiryDate(i.expiryDate)), escape(i.fifoLotNumber), i.expiredQuantity ?? 0,
     i.reorderPt ?? '', i.order ?? '', i.onPO, escape(i.nextDeliv), i.salesPerWeek,
   ].join(','))
   const content = [headers.join(','), ...rows].join('\n')
-  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `pharma-inventory-${new Date().toISOString().slice(0, 10)}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
+  downloadTextFile(
+    content,
+    `pharma-inventory-${new Date().toISOString().slice(0, 10)}.csv`,
+    'text/csv;charset=utf-8;'
+  )
 }
 
 function exportToPDF(items: InventoryItem[]): void {
@@ -55,35 +56,56 @@ function exportToPDF(items: InventoryItem[]): void {
   doc.setFontSize(9)
   doc.setTextColor(100, 100, 100)
   doc.text(`Generated: ${new Date().toLocaleString()} · ${items.length} items`, 14, 21)
+  doc.setFontSize(8)
+  doc.text('Columns: item, vendor, stock, expiry/FIFO, expired quantity, purchasing metrics', 14, 26)
 
   autoTable(doc, {
-    startY: 26,
-    head: [['Item Code', 'Description', 'Vendor', 'Category', 'On Hand', 'Reorder Pt', 'On PO', 'Sales/Wk']],
+    startY: 30,
+    theme: 'grid',
+    head: [['Item Code', 'Description', 'Vendor', 'Category', 'On Hand', 'Expiry', 'FIFO Lot', 'Expired Qty', 'On PO', 'Sales/Wk']],
     body: items.map(i => [
       i.itemCode,
       i.description,
       i.vendor,
       i.category ?? '—',
       i.onHand.toLocaleString(),
-      i.reorderPt != null ? i.reorderPt.toLocaleString() : '—',
+      formatExpiryDate(i.expiryDate),
+      i.fifoLotNumber || '—',
+      (i.expiredQuantity ?? 0).toLocaleString(),
       i.onPO.toLocaleString(),
       i.salesPerWeek.toLocaleString(),
     ]),
-    styles: { fontSize: 7, cellPadding: 2 },
-    headStyles: { fillColor: [16, 96, 192], textColor: 255, fontStyle: 'bold' },
+    styles: {
+      fontSize: 6.5,
+      cellPadding: 1.8,
+      lineColor: [220, 226, 232],
+      lineWidth: 0.1,
+      overflow: 'linebreak',
+      valign: 'middle',
+    },
+    headStyles: {
+      fillColor: [16, 96, 192],
+      textColor: 255,
+      fontStyle: 'bold',
+      halign: 'center',
+    },
     alternateRowStyles: { fillColor: [235, 243, 255] },
     columnStyles: {
-      0: { cellWidth: 22 },
-      1: { cellWidth: 'auto' },
+      0: { cellWidth: 20 },
+      1: { cellWidth: 58 },
+      2: { cellWidth: 28 },
+      3: { cellWidth: 18 },
       4: { halign: 'right' },
-      5: { halign: 'right' },
-      6: { halign: 'right' },
+      5: { cellWidth: 20 },
+      6: { cellWidth: 20 },
       7: { halign: 'right' },
+      8: { halign: 'right' },
+      9: { halign: 'right' },
     },
     margin: { left: 14, right: 14 },
   })
 
-  doc.save(`pharma-inventory-${new Date().toISOString().slice(0, 10)}.pdf`)
+  downloadPdf(doc, `pharma-inventory-${new Date().toISOString().slice(0, 10)}.pdf`)
 }
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
@@ -115,7 +137,13 @@ function Section({ icon: Icon, title, description, children }: {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Settings(): JSX.Element {
-  const emptyFilters = { search: '', vendor: 'all', category: 'all', stockStatus: 'all' as const }
+  const emptyFilters = {
+    search: '',
+    vendor: 'all',
+    category: 'all',
+    stockStatus: 'all' as const,
+    expiryStatus: 'all' as const,
+  }
   const { allItems, deleteItems } = useInventory(emptyFilters)
   const existingItems = allItems.filter(i => i.rowType === 'item')
   const existingCount = existingItems.length

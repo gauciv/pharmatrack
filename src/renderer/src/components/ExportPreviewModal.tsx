@@ -13,6 +13,7 @@ export interface ExportFilters {
   vendor?: string
   category?: string
   status?: string
+  expiry?: string
 }
 
 interface ExportPreviewModalProps {
@@ -35,6 +36,7 @@ export function buildExportFileName(
   if (filters.vendor && filters.vendor !== 'all') parts.push(filters.vendor)
   if (filters.category && filters.category !== 'all') parts.push(filters.category)
   if (filters.status && filters.status !== 'all') parts.push(filters.status)
+  if (filters.expiry && filters.expiry !== 'all') parts.push(filters.expiry)
   const date = new Date().toISOString().slice(0, 10)
   parts.push(date)
   return parts.join('_').replace(/\s+/g, '-')
@@ -70,6 +72,19 @@ export function ExportPreviewModal({
     ([, v]) => v && v !== 'all',
   )
 
+  const filterLabels: Record<string, string> = {
+    vendor: 'Vendor',
+    category: 'Category',
+    status: 'Stock',
+    expiry: 'Expiry',
+  }
+
+  const formatFilterValue = (value: string): string =>
+    value
+      .split('-')
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ')
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md dark:bg-gray-900 dark:border-gray-700">
@@ -95,7 +110,8 @@ export function ExportPreviewModal({
                     key={key}
                     className="inline-flex items-center gap-1 rounded-md bg-brand/10 dark:bg-brand/20 px-2 py-0.5 text-[11px] font-medium text-brand dark:text-blue-300"
                   >
-                    <span className="text-muted-foreground capitalize">{key}:</span> {value}
+                    <span className="text-muted-foreground">{filterLabels[key] ?? key}:</span>
+                    {formatFilterValue(String(value))}
                   </span>
                 ))}
               </div>

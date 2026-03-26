@@ -24,7 +24,7 @@ interface VendorStat {
 const VENDOR_COLORS = ['#1060C0', '#0D2B52', '#3B82F6', '#2563EB', '#7C3AED', '#6B7280', '#0891B2', '#059669']
 
 const emptyFilters: InventoryFilters = {
-  search: '', vendor: 'all', category: 'all', stockStatus: 'all',
+  search: '', vendor: 'all', category: 'all', stockStatus: 'all', expiryStatus: 'all',
 }
 
 export default function Vendors(): JSX.Element {

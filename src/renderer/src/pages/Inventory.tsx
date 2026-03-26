@@ -35,6 +35,7 @@ export default function Inventory(): JSX.Element {
     vendor: 'all',
     category: 'all',
     stockStatus: 'all',
+    expiryStatus: 'all',
   })
 
   const { items, loading, vendors, categories, total, addItem, updateItem, deleteItem, deleteItems } =
@@ -50,7 +51,12 @@ export default function Inventory(): JSX.Element {
 
   // Export modal state
   const [exportOpen, setExportOpen] = useState(false)
-  const exportFilters = { vendor: filters.vendor, category: filters.category, status: filters.stockStatus }
+  const exportFilters = {
+    vendor: filters.vendor,
+    category: filters.category,
+    status: filters.stockStatus,
+    expiry: filters.expiryStatus,
+  }
   const exportFileName = buildExportFileName('Inventory', exportFilters)
   const handleExport = useCallback((fileName: string, format: ExportFormat) => {
     if (format === 'csv') exportInventoryCSV(items, fileName)
@@ -88,12 +94,12 @@ export default function Inventory(): JSX.Element {
   }
 
   function resetFilters(): void {
-    setFilters({ search: '', vendor: 'all', category: 'all', stockStatus: 'all' })
+    setFilters({ search: '', vendor: 'all', category: 'all', stockStatus: 'all', expiryStatus: 'all' })
   }
 
   const hasActiveFilters =
     filters.search !== '' || filters.vendor !== 'all' ||
-    filters.category !== 'all' || filters.stockStatus !== 'all'
+    filters.category !== 'all' || filters.stockStatus !== 'all' || filters.expiryStatus !== 'all'
 
   return (
     <>
@@ -190,6 +196,20 @@ export default function Inventory(): JSX.Element {
               <SelectItem value="in-stock">In Stock</SelectItem>
               <SelectItem value="low-stock">Low Stock</SelectItem>
               <SelectItem value="out-of-stock">Out of Stock</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.expiryStatus}
+            onValueChange={v => setFilters(f => ({ ...f, expiryStatus: v as InventoryFilters['expiryStatus'] }))}
+          >
+            <SelectTrigger className="h-8 text-xs w-[150px] bg-gray-50 dark:bg-gray-800 border-silver-300 dark:border-gray-700">
+              <SelectValue placeholder="Expiry tracking" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All expiry</SelectItem>
+              <SelectItem value="untracked">Untracked</SelectItem>
+              <SelectItem value="expired">Expired</SelectItem>
+              <SelectItem value="not-expired">Not Expired</SelectItem>
             </SelectContent>
           </Select>
         </div>

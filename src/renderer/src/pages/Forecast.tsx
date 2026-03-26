@@ -176,7 +176,7 @@ function VendorGroupedView({ rows }: { rows: ForecastRow[] }): JSX.Element {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const emptyFilters: InventoryFilters = {
-  search: '', vendor: 'all', category: 'all', stockStatus: 'all',
+  search: '', vendor: 'all', category: 'all', stockStatus: 'all', expiryStatus: 'all',
 }
 
 export default function Forecast(): JSX.Element {

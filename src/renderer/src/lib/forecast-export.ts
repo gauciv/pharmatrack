@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { ForecastRow } from './forecast-utils'
+import { downloadPdf, downloadTextFile } from './export-download'
 
 // ─── CSV Export ───────────────────────────────────────────────────────────────
 
@@ -29,13 +30,11 @@ export function exportForecastCSV(rows: ForecastRow[], fileName?: string): void 
   ].join(','))
 
   const content = [headers.join(','), ...csvRows].join('\n')
-  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${fileName || `pharma-forecast-${new Date().toISOString().slice(0, 10)}`}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
+  downloadTextFile(
+    content,
+    `${fileName || `pharma-forecast-${new Date().toISOString().slice(0, 10)}`}.csv`,
+    'text/csv;charset=utf-8;'
+  )
 }
 
 // ─── PDF Export ───────────────────────────────────────────────────────────────
@@ -60,9 +59,12 @@ export function exportForecastPDF(rows: ForecastRow[], fileName?: string): void 
     `Generated: ${new Date().toLocaleString()} \u00b7 ${rows.length} items \u00b7 ${criticalCount} critical, ${lowCount} low, ${healthyCount} healthy`,
     14, 21
   )
+  doc.setFontSize(8)
+  doc.text('Columns: stock on hand, weekly demand, runway, priority, and suggested reorder quantity', 14, 26)
 
   autoTable(doc, {
-    startY: 26,
+    startY: 30,
+    theme: 'grid',
     head: [['Item Code', 'Description', 'Vendor', 'Category', 'On Hand', 'Sales/Wk', 'Runway', 'Status', 'Sugg. Order']],
     body: rows.map(r => [
       r.item.itemCode,
@@ -75,15 +77,30 @@ export function exportForecastPDF(rows: ForecastRow[], fileName?: string): void 
       r.status,
       r.suggestedOrder > 0 ? r.suggestedOrder.toLocaleString() : '\u2014',
     ]),
-    styles: { fontSize: 7, cellPadding: 2 },
-    headStyles: { fillColor: [16, 96, 192], textColor: 255, fontStyle: 'bold' },
+    styles: {
+      fontSize: 6.5,
+      cellPadding: 1.8,
+      lineColor: [220, 226, 232],
+      lineWidth: 0.1,
+      overflow: 'linebreak',
+      valign: 'middle',
+    },
+    headStyles: {
+      fillColor: [16, 96, 192],
+      textColor: 255,
+      fontStyle: 'bold',
+      halign: 'center',
+    },
     alternateRowStyles: { fillColor: [235, 243, 255] },
     columnStyles: {
-      0: { cellWidth: 22 },
-      1: { cellWidth: 'auto' },
+      0: { cellWidth: 20 },
+      1: { cellWidth: 54 },
+      2: { cellWidth: 28 },
+      3: { cellWidth: 18 },
       4: { halign: 'right' },
       5: { halign: 'right' },
       6: { halign: 'right' },
+      7: { cellWidth: 16, halign: 'center' },
       8: { halign: 'right' },
     },
     margin: { left: 14, right: 14 },
@@ -96,5 +113,5 @@ export function exportForecastPDF(rows: ForecastRow[], fileName?: string): void 
     },
   })
 
-  doc.save(`${fileName || `pharma-forecast-${new Date().toISOString().slice(0, 10)}`}.pdf`)
+  downloadPdf(doc, `${fileName || `pharma-forecast-${new Date().toISOString().slice(0, 10)}`}.pdf`)
 }

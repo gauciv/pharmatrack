@@ -83,7 +83,7 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["Inter", "Segoe UI", "Noto Sans", "Liberation Sans", "Arial", "sans-serif"],
       },
       keyframes: {
         "accordion-down": {

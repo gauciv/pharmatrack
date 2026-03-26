@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 import { useInventory, InventoryFilters } from '../hooks/useInventory'
 import { cn } from '../lib/utils'
+import { formatExpiryDate } from '../lib/inventory-expiry'
 
 const CHART_COLORS = ['#1060C0', '#0D2B52', '#3B82F6', '#60A5FA', '#93C5FD', '#2563EB', '#7C3AED', '#6B7280']
 
@@ -48,7 +49,7 @@ function StatCard({ title, value, sub, icon: Icon, iconColor, iconBg, valueColor
 }
 
 const emptyFilters: InventoryFilters = {
-  search: '', vendor: 'all', category: 'all', stockStatus: 'all',
+  search: '', vendor: 'all', category: 'all', stockStatus: 'all', expiryStatus: 'all',
 }
 
 const HIGH_VOLUME_THRESHOLD = 1000
@@ -62,7 +63,12 @@ export default function DashboardHome(): JSX.Element {
   const highVolumeMovers = useMemo(() => items.filter(i => i.salesPerWeek >= HIGH_VOLUME_THRESHOLD), [items])
   const stockAnomalies = useMemo(() => items.filter(i => i.onHand < 0), [items])
   const totalOnHand = useMemo(() => items.reduce((s, i) => s + i.onHand, 0), [items])
-
+  const expiredProducts = useMemo(
+    () => items
+      .filter(i => (i.expiredQuantity ?? 0) > 0)
+      .sort((a, b) => (a.expiryDate ?? '').localeCompare(b.expiryDate ?? '') || a.description.localeCompare(b.description)),
+    [items]
+  )
   const vendorSummary = useMemo(() => {
     const map = new Map<string, { skus: number; onHand: number; salesPerWeek: number }>()
     items.forEach(i => {
@@ -232,6 +238,61 @@ export default function DashboardHome(): JSX.Element {
             </CardContent>
           </Card>
         </div>
+
+        <Card className={cn(
+          'border-silver-200 dark:border-gray-800',
+          expiredProducts.length > 0 && 'border-destructive/30 bg-red-50/20 dark:bg-red-950/10'
+        )}>
+          <CardHeader className={cn(
+            'pb-2 border-b dark:border-gray-800',
+            expiredProducts.length > 0 && 'border-destructive/20'
+          )}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className={cn('h-4 w-4', expiredProducts.length > 0 ? 'text-destructive' : 'text-muted-foreground')} />
+                <CardTitle className={cn(
+                  'text-sm font-semibold',
+                  expiredProducts.length > 0 ? 'text-destructive' : 'text-charcoal-800 dark:text-gray-100'
+                )}>
+                  Expired Products
+                </CardTitle>
+              </div>
+              <Badge variant={expiredProducts.length > 0 ? 'destructive' : 'secondary'} className="text-[10px]">
+                {expiredProducts.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-3">
+            {expiredProducts.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No tracked products are expired as of {new Intl.DateTimeFormat('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                }).format(new Date())}.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {expiredProducts.map(item => (
+                  <div key={item.id} className="flex items-center justify-between gap-4 text-xs">
+                    <div className="min-w-0">
+                      <p className="font-medium text-charcoal-800 dark:text-gray-100 truncate">{item.description}</p>
+                      <p className="text-muted-foreground">
+                        Expired {formatExpiryDate(item.expiryDate)} · FIFO <span className="font-mono">{item.fifoLotNumber ?? '—'}</span>
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-mono font-semibold text-destructive">
+                        {(item.expiredQuantity ?? 0).toLocaleString()}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">expired qty</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Stock anomaly detail */}
         {stockAnomalies.length > 0 && (
