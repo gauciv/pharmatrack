@@ -89,7 +89,7 @@ export function enrichInventoryItem(item: InventoryItem, today = new Date()): In
 }
 
 export function formatExpiryDate(expiryDate?: string | null): string {
-  if (!expiryDate) return 'Not tracked'
+  if (!expiryDate) return 'N/A'
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',

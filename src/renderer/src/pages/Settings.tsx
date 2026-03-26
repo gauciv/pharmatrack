@@ -35,7 +35,7 @@ function exportToCSV(items: InventoryItem[]): void {
   const rows = items.map(i => [
     escape(i.itemCode), escape(i.description), escape(i.vendor),
     escape(i.category), escape(i.prefVendor), i.onHand,
-    escape(formatExpiryDate(i.expiryDate)), escape(i.fifoLotNumber), i.expiredQuantity ?? 0,
+    escape(formatExpiryDate(i.expiryDate)), escape(i.fifoLotNumber), i.lotTracking?.length ? (i.expiredQuantity ?? 0) : 'N/A',
     i.reorderPt ?? '', i.order ?? '', i.onPO, escape(i.nextDeliv), i.salesPerWeek,
   ].join(','))
   const content = [headers.join(','), ...rows].join('\n')
@@ -71,7 +71,7 @@ function exportToPDF(items: InventoryItem[]): void {
       i.onHand.toLocaleString(),
       formatExpiryDate(i.expiryDate),
       i.fifoLotNumber || '—',
-      (i.expiredQuantity ?? 0).toLocaleString(),
+      i.lotTracking?.length ? (i.expiredQuantity ?? 0).toLocaleString() : 'N/A',
       i.onPO.toLocaleString(),
       i.salesPerWeek.toLocaleString(),
     ]),

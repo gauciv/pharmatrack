@@ -125,7 +125,10 @@ export function InventoryTable({
   function toggleAll(allVisible: InventoryItem[]) {
     const ids = allVisible.map(i => i.id)
     const allSelected = ids.every(id => selectedSet.has(id))
-    onSelectionChange(allSelected ? [] : ids)
+    const next = new Set(selectedSet)
+    if (allSelected) ids.forEach(id => next.delete(id))
+    else ids.forEach(id => next.add(id))
+    onSelectionChange([...next])
   }
 
   const columns = useMemo(() => [
@@ -458,9 +461,9 @@ export function InventoryTable({
 
       {/* Item detail dialog */}
       <Dialog open={viewTarget != null} onOpenChange={open => !open && setViewTarget(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm border-silver-200 dark:border-gray-700 bg-white dark:bg-gray-900">
           <DialogHeader>
-            <DialogTitle className="text-sm pr-4">{viewTarget?.description}</DialogTitle>
+            <DialogTitle className="text-sm pr-4 text-charcoal-900 dark:text-gray-100">{viewTarget?.description}</DialogTitle>
           </DialogHeader>
           {viewTarget && (
             <div className="mt-1">
@@ -479,15 +482,19 @@ export function InventoryTable({
               <DetailRow label="Order Qty" value={viewTarget.order != null ? viewTarget.order.toLocaleString() : '—'} />
               <DetailRow label="Next Delivery" value={viewTarget.nextDeliv || '—'} />
               <DetailRow label="Expiry" value={formatExpiryDate(viewTarget.expiryDate)} />
-              <DetailRow label="FIFO Lot" value={<span className="font-mono">{viewTarget.fifoLotNumber || '—'}</span>} />
-              <DetailRow label="Tracked Lots" value={viewTarget.lotCount != null ? viewTarget.lotCount.toLocaleString() : '0'} />
+              <DetailRow label="FIFO Lot" value={<span className="font-mono">{viewTarget.lotTracking?.length ? (viewTarget.fifoLotNumber || '—') : 'N/A'}</span>} />
+              <DetailRow label="Tracked Lots" value={viewTarget.lotTracking?.length ? viewTarget.lotCount?.toLocaleString() : 'N/A'} />
               <DetailRow label="Expired Qty" value={
-                <span className={cn(
-                  'font-mono font-semibold',
-                  (viewTarget.expiredQuantity ?? 0) > 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'
-                )}>
-                  {(viewTarget.expiredQuantity ?? 0).toLocaleString()}
-                </span>
+                viewTarget.lotTracking?.length ? (
+                  <span className={cn(
+                    'font-mono font-semibold',
+                    (viewTarget.expiredQuantity ?? 0) > 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'
+                  )}>
+                    {(viewTarget.expiredQuantity ?? 0).toLocaleString()}
+                  </span>
+                ) : (
+                  'N/A'
+                )
               } />
               <DetailRow label="Sales / Week" value={<span className="font-mono">{viewTarget.salesPerWeek.toLocaleString()}</span>} />
               {viewTarget.salesPerWeek > 0 && (
@@ -505,7 +512,7 @@ export function InventoryTable({
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2 border-t dark:border-gray-700 mt-2">
-            <Button size="sm" variant="outline" onClick={() => { setViewTarget(null); onEdit(viewTarget!) }}>
+            <Button size="sm" variant="outline" className="dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" onClick={() => { setViewTarget(null); onEdit(viewTarget!) }}>
               <Pencil className="h-3 w-3 mr-1" /> Edit
             </Button>
           </div>
