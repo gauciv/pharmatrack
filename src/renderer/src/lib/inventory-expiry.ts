@@ -1,6 +1,22 @@
 import { lotTrackingSeed } from './lot-tracking-seed'
 import { InventoryItem, InventoryLot } from '../types/inventory'
 
+export type InventoryExpiryStatus =
+  | 'untracked'
+  | 'expired'
+  | 'expiring-30'
+  | 'expiring-60'
+  | 'expiring-90'
+  | 'tracked-safe'
+
+export interface TrackedCoverage {
+  trackedQuantity: number
+  onHand: number
+  delta: number
+  coveragePercent: number | null
+  status: 'untracked' | 'matched' | 'partial' | 'over' | 'no-on-hand'
+}
+
 function normalizeItemCode(value: string): string {
   const cleaned = value.toLowerCase().replace(/[^a-z0-9]/g, '')
   if (/^\d+$/.test(cleaned)) return cleaned.replace(/^0+/, '') || '0'
@@ -31,6 +47,25 @@ function dateFromIso(isoDate: string): Date {
   return new Date(Date.UTC(year, month - 1, day, 12))
 }
 
+function sortLots(lots: InventoryLot[]): InventoryLot[] {
+  return [...lots].sort((a, b) => {
+    if (a.expiryDate !== b.expiryDate) return a.expiryDate.localeCompare(b.expiryDate)
+    return a.lotNumber.localeCompare(b.lotNumber)
+  })
+}
+
+function normalizeLotTracking(lots: InventoryLot[]): InventoryLot[] {
+  return sortLots(
+    lots
+      .filter((lot): lot is InventoryLot => Boolean(lot?.expiryDate))
+      .map((lot) => ({
+        lotNumber: String(lot.lotNumber ?? '').trim(),
+        expiryDate: String(lot.expiryDate).trim(),
+        quantity: Number(lot.quantity) || 0,
+      }))
+  )
+}
+
 function findLotTracking(item: Pick<InventoryItem, 'itemCode' | 'description'>): InventoryLot[] {
   const codeKey = normalizeItemCode(item.itemCode)
   const descriptionKey = normalizeDescription(item.description)
@@ -50,25 +85,121 @@ function findLotTracking(item: Pick<InventoryItem, 'itemCode' | 'description'>):
 
   if (!matchedEntry) return []
 
-  return [...matchedEntry.lots].sort((a, b) => {
-    if (a.expiryDate !== b.expiryDate) return a.expiryDate.localeCompare(b.expiryDate)
-    return a.lotNumber.localeCompare(b.lotNumber)
-  })
+  return sortLots(matchedEntry.lots)
+}
+
+function getManualLotTracking(item: InventoryItem): InventoryLot[] | undefined {
+  if (!Object.prototype.hasOwnProperty.call(item, 'lotTracking')) return undefined
+  return normalizeLotTracking(item.lotTracking ?? [])
+}
+
+function getLotTracking(item: InventoryItem): InventoryLot[] {
+  return getManualLotTracking(item) ?? findLotTracking(item)
+}
+
+export function getDaysUntilExpiry(expiryDate?: string | null, today = new Date()): number | null {
+  if (!expiryDate) return null
+  const todayIso = getTodayIso(today)
+  const diffMs = dateFromIso(expiryDate).getTime() - dateFromIso(todayIso).getTime()
+  return Math.round(diffMs / 86400000)
+}
+
+export function getNextNonExpiredLot(
+  item: Pick<InventoryItem, 'lotTracking'>,
+  today = new Date()
+): InventoryLot | null {
+  const todayIso = getTodayIso(today)
+  return item.lotTracking?.find((lot) => lot.expiryDate >= todayIso) ?? null
+}
+
+export function getExpiryStatus(
+  item: Pick<InventoryItem, 'lotTracking' | 'expiredQuantity'>,
+  today = new Date()
+): InventoryExpiryStatus {
+  if (!item.lotTracking?.length) return 'untracked'
+  if ((item.expiredQuantity ?? 0) > 0) return 'expired'
+
+  const nextLot = getNextNonExpiredLot(item, today)
+  if (!nextLot) return 'tracked-safe'
+
+  const daysUntil = getDaysUntilExpiry(nextLot.expiryDate, today)
+  if (daysUntil === null) return 'tracked-safe'
+  if (daysUntil <= 30) return 'expiring-30'
+  if (daysUntil <= 60) return 'expiring-60'
+  if (daysUntil <= 90) return 'expiring-90'
+  return 'tracked-safe'
+}
+
+export function getExpiryStatusLabel(status: InventoryExpiryStatus): string {
+  switch (status) {
+    case 'expired':
+      return 'Expired'
+    case 'expiring-30':
+      return '0-30 days'
+    case 'expiring-60':
+      return '31-60 days'
+    case 'expiring-90':
+      return '61-90 days'
+    case 'tracked-safe':
+      return 'Tracked'
+    default:
+      return 'Untracked'
+  }
+}
+
+export function getTrackedCoverage(
+  item: Pick<InventoryItem, 'onHand' | 'lotTracking' | 'trackedQuantity'>
+): TrackedCoverage {
+  const trackedQuantity =
+    item.trackedQuantity ??
+    item.lotTracking?.reduce((sum, lot) => sum + lot.quantity, 0) ??
+    0
+
+  if (!item.lotTracking?.length) {
+    return {
+      trackedQuantity,
+      onHand: item.onHand,
+      delta: trackedQuantity - item.onHand,
+      coveragePercent: null,
+      status: 'untracked',
+    }
+  }
+
+  if (item.onHand <= 0) {
+    return {
+      trackedQuantity,
+      onHand: item.onHand,
+      delta: trackedQuantity - item.onHand,
+      coveragePercent: null,
+      status: 'no-on-hand',
+    }
+  }
+
+  const delta = trackedQuantity - item.onHand
+  const coveragePercent = Number(((trackedQuantity / item.onHand) * 100).toFixed(1))
+
+  return {
+    trackedQuantity,
+    onHand: item.onHand,
+    delta,
+    coveragePercent,
+    status: delta === 0 ? 'matched' : delta < 0 ? 'partial' : 'over',
+  }
 }
 
 export function enrichInventoryItem(item: InventoryItem, today = new Date()): InventoryItem {
-  const lotTracking = findLotTracking(item)
+  const lotTracking = getLotTracking(item)
   if (lotTracking.length === 0) {
     return {
       ...item,
       expiryDate: null,
       fifoLotNumber: null,
-      lotTracking: [],
       lotCount: 0,
       trackedQuantity: 0,
       expiredQuantity: 0,
       expiredLotCount: 0,
       hasExpiredStock: false,
+      lotTracking: getManualLotTracking(item) ?? [],
     }
   }
 

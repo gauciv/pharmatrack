@@ -202,14 +202,17 @@ export default function Inventory(): JSX.Element {
             value={filters.expiryStatus}
             onValueChange={v => setFilters(f => ({ ...f, expiryStatus: v as InventoryFilters['expiryStatus'] }))}
           >
-            <SelectTrigger className="h-8 text-xs w-[150px] bg-gray-50 dark:bg-gray-800 border-silver-300 dark:border-gray-700">
+            <SelectTrigger className="h-8 text-xs w-[180px] bg-gray-50 dark:bg-gray-800 border-silver-300 dark:border-gray-700">
               <SelectValue placeholder="Expiry tracking" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All expiry</SelectItem>
               <SelectItem value="untracked">Untracked</SelectItem>
               <SelectItem value="expired">Expired</SelectItem>
-              <SelectItem value="not-expired">Not Expired</SelectItem>
+              <SelectItem value="expiring-30">Expiring in 30 days</SelectItem>
+              <SelectItem value="expiring-60">Expiring in 31-60 days</SelectItem>
+              <SelectItem value="expiring-90">Expiring in 61-90 days</SelectItem>
+              <SelectItem value="tracked-safe">Tracked &gt; 90 days</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -5,7 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 import { useInventory, InventoryFilters } from '../hooks/useInventory'
 import { cn } from '../lib/utils'
-import { formatExpiryDate } from '../lib/inventory-expiry'
+import {
+  formatExpiryDate,
+  getDaysUntilExpiry,
+  getExpiryStatus,
+  getNextNonExpiredLot,
+} from '../lib/inventory-expiry'
 
 const CHART_COLORS = ['#1060C0', '#0D2B52', '#3B82F6', '#60A5FA', '#93C5FD', '#2563EB', '#7C3AED', '#6B7280']
 
@@ -54,6 +59,12 @@ const emptyFilters: InventoryFilters = {
 
 const HIGH_VOLUME_THRESHOLD = 1000
 
+function getExpiryBadgeVariant(status: 'expiring-30' | 'expiring-60' | 'expiring-90'): 'destructive' | 'warning' | 'info' {
+  if (status === 'expiring-30') return 'destructive'
+  if (status === 'expiring-60') return 'warning'
+  return 'info'
+}
+
 export default function DashboardHome(): JSX.Element {
   const { allItems, loading } = useInventory(emptyFilters)
 
@@ -68,6 +79,40 @@ export default function DashboardHome(): JSX.Element {
       .filter(i => (i.expiredQuantity ?? 0) > 0)
       .sort((a, b) => (a.expiryDate ?? '').localeCompare(b.expiryDate ?? '') || a.description.localeCompare(b.description)),
     [items]
+  )
+  const expiryWatchlist = useMemo(() => (
+    items
+      .map(item => {
+        const status = getExpiryStatus(item)
+        if (status !== 'expiring-30' && status !== 'expiring-60' && status !== 'expiring-90') return null
+
+        const nextLot = getNextNonExpiredLot(item)
+        if (!nextLot) return null
+
+        return {
+          item,
+          status,
+          nextLot,
+          daysUntil: getDaysUntilExpiry(nextLot.expiryDate) ?? 0,
+        }
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry != null)
+      .sort((a, b) => (
+        a.nextLot.expiryDate.localeCompare(b.nextLot.expiryDate) ||
+        a.item.description.localeCompare(b.item.description)
+      ))
+  ), [items])
+  const expiring30 = useMemo(
+    () => expiryWatchlist.filter(entry => entry.status === 'expiring-30'),
+    [expiryWatchlist]
+  )
+  const expiring60 = useMemo(
+    () => expiryWatchlist.filter(entry => entry.status === 'expiring-60'),
+    [expiryWatchlist]
+  )
+  const expiring90 = useMemo(
+    () => expiryWatchlist.filter(entry => entry.status === 'expiring-90'),
+    [expiryWatchlist]
   )
   const vendorSummary = useMemo(() => {
     const map = new Map<string, { skus: number; onHand: number; salesPerWeek: number }>()
@@ -140,6 +185,39 @@ export default function DashboardHome(): JSX.Element {
             iconBg="bg-red-50 dark:bg-red-900/30"
             valueColor={stockAnomalies.length > 0 ? 'text-destructive' : 'text-charcoal-800 dark:text-gray-100'}
             badge={stockAnomalies.length > 0 ? { label: 'Critical', color: 'bg-red-50 dark:bg-red-900/30 text-destructive' } : undefined}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <StatCard
+            title="Expiring in 30 Days"
+            value={expiring30.length}
+            sub={expiring30[0] ? `Soonest ${formatExpiryDate(expiring30[0].nextLot.expiryDate)}` : 'No items due in the next 30 days'}
+            icon={AlertTriangle}
+            iconColor="text-destructive"
+            iconBg="bg-red-50 dark:bg-red-900/30"
+            valueColor={expiring30.length > 0 ? 'text-destructive' : undefined}
+            badge={expiring30.length > 0 ? { label: 'Urgent', color: 'bg-red-50 dark:bg-red-900/30 text-destructive' } : undefined}
+          />
+          <StatCard
+            title="Expiring in 31-60 Days"
+            value={expiring60.length}
+            sub={expiring60[0] ? `Soonest ${formatExpiryDate(expiring60[0].nextLot.expiryDate)}` : 'Nothing currently queued in this bucket'}
+            icon={AlertTriangle}
+            iconColor="text-amber-600"
+            iconBg="bg-amber-50 dark:bg-amber-900/30"
+            valueColor={expiring60.length > 0 ? 'text-amber-700 dark:text-amber-400' : undefined}
+            badge={expiring60.length > 0 ? { label: 'Watch', color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' } : undefined}
+          />
+          <StatCard
+            title="Expiring in 61-90 Days"
+            value={expiring90.length}
+            sub={expiring90[0] ? `Soonest ${formatExpiryDate(expiring90[0].nextLot.expiryDate)}` : 'No upcoming items within 90 days'}
+            icon={AlertTriangle}
+            iconColor="text-brand"
+            iconBg="bg-blue-50 dark:bg-blue-900/30"
+            valueColor={expiring90.length > 0 ? 'text-brand' : undefined}
+            badge={expiring90.length > 0 ? { label: 'Plan', color: 'bg-blue-50 dark:bg-blue-900/30 text-brand dark:text-blue-300' } : undefined}
           />
         </div>
 
@@ -238,6 +316,50 @@ export default function DashboardHome(): JSX.Element {
             </CardContent>
           </Card>
         </div>
+
+        <Card className="border-silver-200 dark:border-gray-800">
+          <CardHeader className="pb-2 border-b dark:border-gray-800">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold text-charcoal-800 dark:text-gray-100">Expiry Watchlist</CardTitle>
+              <Badge variant={expiryWatchlist.length > 0 ? 'warning' : 'secondary'} className="text-[10px]">
+                {expiryWatchlist.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-3">
+            {expiryWatchlist.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No tracked products are scheduled to expire within the next 90 days.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {expiryWatchlist.slice(0, 8).map(({ item, status, nextLot, daysUntil }) => (
+                  <div key={item.id} className="flex items-center justify-between gap-4 text-xs">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-charcoal-800 dark:text-gray-100 truncate">{item.description}</p>
+                        <Badge variant={getExpiryBadgeVariant(status)} className="text-[10px]">
+                          {status === 'expiring-30' ? '0-30d' : status === 'expiring-60' ? '31-60d' : '61-90d'}
+                        </Badge>
+                      </div>
+                      <p className="text-muted-foreground">
+                        {formatExpiryDate(nextLot.expiryDate)} · Lot <span className="font-mono">{nextLot.lotNumber || '—'}</span>
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-mono font-semibold text-charcoal-800 dark:text-gray-100">
+                        {nextLot.quantity.toLocaleString()}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {daysUntil === 0 ? 'today' : `${daysUntil} days`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card className={cn(
           'border-silver-200 dark:border-gray-800',

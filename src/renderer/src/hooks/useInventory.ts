@@ -11,14 +11,14 @@ import {
 } from '../lib/inventory-service'
 import { localStore } from '../lib/local-inventory-store'
 import { InventoryItem } from '../types/inventory'
-import { enrichInventoryItem } from '../lib/inventory-expiry'
+import { enrichInventoryItem, getExpiryStatus, type InventoryExpiryStatus } from '../lib/inventory-expiry'
 
 export interface InventoryFilters {
   search: string
   vendor: string
   category: string
   stockStatus: 'all' | 'in-stock' | 'low-stock' | 'out-of-stock'
-  expiryStatus: 'all' | 'untracked' | 'expired' | 'not-expired'
+  expiryStatus: 'all' | InventoryExpiryStatus
 }
 
 /**
@@ -122,11 +122,7 @@ export function useInventory(filters: InventoryFilters) {
       })
     }
     if (filters.expiryStatus !== 'all') {
-      result = result.filter(i => {
-        if (filters.expiryStatus === 'untracked') return !i.lotTracking || i.lotTracking.length === 0
-        if (filters.expiryStatus === 'expired') return (i.expiredQuantity ?? 0) > 0
-        return (i.lotTracking?.length ?? 0) > 0 && (i.expiredQuantity ?? 0) === 0
-      })
+      result = result.filter(i => getExpiryStatus(i) === filters.expiryStatus)
     }
     return result
   }, [allItems, filters])

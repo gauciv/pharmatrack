@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Plus, Trash2 } from 'lucide-react'
 import { InventoryItem } from '../../types/inventory'
 import {
   Sheet,
@@ -11,6 +12,7 @@ import {
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
+import { Checkbox } from '../ui/checkbox'
 import { cn } from '../../lib/utils'
 
 interface ItemSheetProps {
@@ -34,11 +36,37 @@ type FormData = {
   onPO: string
   nextDeliv: string
   salesPerWeek: string
+  trackExpiry: boolean
+  lotTracking: EditableLot[]
+}
+
+type EditableLot = {
+  key: string
+  lotNumber: string
+  expiryDate: string
+  quantity: string
 }
 
 const emptyForm: FormData = {
   itemCode: '', description: '', vendor: '', category: '', prefVendor: '',
   onHand: '0', reorderPt: '', order: '', onPO: '0', nextDeliv: '', salesPerWeek: '0',
+  trackExpiry: false, lotTracking: [],
+}
+
+function createLotKey(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function createEditableLot(
+  lot?: Partial<{ lotNumber: string; expiryDate: string; quantity: number | string }>,
+  fallbackQuantity = ''
+): EditableLot {
+  return {
+    key: createLotKey(),
+    lotNumber: lot?.lotNumber ?? '',
+    expiryDate: lot?.expiryDate ?? '',
+    quantity: lot?.quantity != null ? String(lot.quantity) : fallbackQuantity,
+  }
 }
 
 function toFormData(item: InventoryItem): FormData {
@@ -54,6 +82,8 @@ function toFormData(item: InventoryItem): FormData {
     onPO: String(item.onPO),
     nextDeliv: item.nextDeliv ?? '',
     salesPerWeek: String(item.salesPerWeek),
+    trackExpiry: (item.lotTracking?.length ?? 0) > 0,
+    lotTracking: (item.lotTracking ?? []).map((lot) => createEditableLot(lot)),
   }
 }
 
@@ -79,11 +109,13 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
   const [form, setForm] = useState<FormData>(emptyForm)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
+  const [lotErrors, setLotErrors] = useState<Array<Partial<Record<'expiryDate' | 'quantity', string>>>>([])
 
   useEffect(() => {
     if (open) {
       setForm(item ? toFormData(item) : emptyForm)
       setErrors({})
+      setLotErrors([])
     }
   }, [open, item])
 
@@ -92,15 +124,94 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
     if (errors[key]) setErrors(prev => ({ ...prev, [key]: undefined }))
   }
 
+  function updateLot(index: number, key: keyof Omit<EditableLot, 'key'>, value: string): void {
+    setForm(prev => {
+      const lotTracking = [...prev.lotTracking]
+      lotTracking[index] = { ...lotTracking[index], [key]: value }
+      return { ...prev, lotTracking }
+    })
+    if (errors.lotTracking) setErrors(prev => ({ ...prev, lotTracking: undefined }))
+    if (lotErrors[index]?.[key as 'expiryDate' | 'quantity']) {
+      setLotErrors(prev => {
+        const next = [...prev]
+        next[index] = { ...next[index], [key]: undefined }
+        return next
+      })
+    }
+  }
+
+  function addLot(prefillQuantity = ''): void {
+    setForm(prev => ({
+      ...prev,
+      trackExpiry: true,
+      lotTracking: [...prev.lotTracking, createEditableLot(undefined, prefillQuantity)],
+    }))
+    if (errors.lotTracking) setErrors(prev => ({ ...prev, lotTracking: undefined }))
+  }
+
+  function removeLot(index: number): void {
+    setForm(prev => ({
+      ...prev,
+      lotTracking: prev.lotTracking.filter((_, lotIndex) => lotIndex !== index),
+    }))
+    setLotErrors(prev => prev.filter((_, lotIndex) => lotIndex !== index))
+  }
+
+  function setTrackExpiry(checked: boolean): void {
+    setForm(prev => ({
+      ...prev,
+      trackExpiry: checked,
+      lotTracking:
+        checked && prev.lotTracking.length === 0
+          ? [createEditableLot(undefined, prev.onHand !== '0' ? prev.onHand : '')]
+          : prev.lotTracking,
+    }))
+    if (!checked) {
+      setErrors(prev => ({ ...prev, lotTracking: undefined }))
+      setLotErrors([])
+    }
+  }
+
+  const trackedQuantityPreview = useMemo(
+    () => form.lotTracking.reduce((sum, lot) => sum + (Number(lot.quantity) || 0), 0),
+    [form.lotTracking]
+  )
+  const onHandPreview = Number(form.onHand) || 0
+  const coveragePercentPreview = form.trackExpiry && onHandPreview > 0
+    ? Number(((trackedQuantityPreview / onHandPreview) * 100).toFixed(1))
+    : null
+
   function validate(): boolean {
     const e: Partial<Record<keyof FormData, string>> = {}
+    const nextLotErrors: Array<Partial<Record<'expiryDate' | 'quantity', string>>> = []
     if (!form.itemCode.trim()) e.itemCode = 'Required'
     if (!form.description.trim()) e.description = 'Required'
     if (!form.vendor.trim()) e.vendor = 'Required'
     if (form.onHand !== '' && isNaN(Number(form.onHand))) e.onHand = 'Must be a number'
     if (form.salesPerWeek !== '' && isNaN(Number(form.salesPerWeek))) e.salesPerWeek = 'Must be a number'
+    if (form.trackExpiry) {
+      const activeLots = form.lotTracking.filter(
+        (lot) => lot.lotNumber.trim() || lot.expiryDate.trim() || lot.quantity.trim() !== ''
+      )
+      if (activeLots.length === 0) {
+        e.lotTracking = 'Add at least one lot or turn off expiry tracking.'
+      }
+
+      form.lotTracking.forEach((lot, index) => {
+        const hasContent = lot.lotNumber.trim() || lot.expiryDate.trim() || lot.quantity.trim() !== ''
+        if (!hasContent) return
+
+        const rowErrors: Partial<Record<'expiryDate' | 'quantity', string>> = {}
+        if (!lot.expiryDate.trim()) rowErrors.expiryDate = 'Required'
+        if (lot.quantity.trim() === '' || isNaN(Number(lot.quantity))) rowErrors.quantity = 'Must be a number'
+        else if (Number(lot.quantity) < 0) rowErrors.quantity = 'Cannot be negative'
+
+        nextLotErrors[index] = rowErrors
+      })
+    }
     setErrors(e)
-    return Object.keys(e).length === 0
+    setLotErrors(nextLotErrors)
+    return Object.keys(e).length === 0 && nextLotErrors.every(row => !row || Object.keys(row).length === 0)
   }
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
@@ -108,6 +219,16 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
     if (!validate()) return
     setSaving(true)
     try {
+      const lotTracking = form.trackExpiry
+        ? form.lotTracking
+          .filter((lot) => lot.lotNumber.trim() || lot.expiryDate.trim() || lot.quantity.trim() !== '')
+          .map((lot) => ({
+            lotNumber: lot.lotNumber.trim(),
+            expiryDate: lot.expiryDate.trim(),
+            quantity: Number(lot.quantity) || 0,
+          }))
+        : []
+
       await onSubmit({
         itemCode: form.itemCode.trim(),
         description: form.description.trim(),
@@ -120,6 +241,7 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
         onPO: Number(form.onPO) || 0,
         nextDeliv: form.nextDeliv.trim(),
         salesPerWeek: Number(form.salesPerWeek) || 0,
+        lotTracking,
         rowType: 'item',
       })
       onOpenChange(false)
@@ -267,6 +389,123 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
                   />
                 </Field>
               </div>
+            </div>
+
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-3 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Expiry &amp; Lot Tracking</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Manage editable lot quantities and expiry dates for this product.
+                  </p>
+                </div>
+                <label className="inline-flex items-center gap-2 text-xs font-medium text-charcoal-800 dark:text-gray-100">
+                  <Checkbox
+                    checked={form.trackExpiry}
+                    onCheckedChange={(checked) => setTrackExpiry(checked === true)}
+                  />
+                  Track expiry
+                </label>
+              </div>
+
+              {form.trackExpiry ? (
+                <div className="space-y-3">
+                  <div className="rounded-md border border-blue-100 bg-blue-50/70 px-3 py-2 dark:border-blue-900/60 dark:bg-blue-950/20">
+                    <div className="flex flex-wrap items-center gap-3 text-[11px]">
+                      <span className="font-semibold text-brand dark:text-blue-300">
+                        {form.lotTracking.length} lot{form.lotTracking.length !== 1 ? 's' : ''}
+                      </span>
+                      <span className="text-muted-foreground">
+                        Tracked qty: <span className="font-mono text-charcoal-800 dark:text-gray-100">{trackedQuantityPreview.toLocaleString()}</span>
+                      </span>
+                      <span className="text-muted-foreground">
+                        On hand: <span className="font-mono text-charcoal-800 dark:text-gray-100">{onHandPreview.toLocaleString()}</span>
+                      </span>
+                      <span className="text-muted-foreground">
+                        Coverage:{' '}
+                        <span className="font-mono text-charcoal-800 dark:text-gray-100">
+                          {coveragePercentPreview != null ? `${coveragePercentPreview}%` : 'N/A'}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {errors.lotTracking && <p className="text-[10px] text-destructive">{errors.lotTracking}</p>}
+
+                  <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                    {form.lotTracking.map((lot, index) => (
+                      <div
+                        key={lot.key}
+                        className="rounded-md border border-silver-200 bg-gray-50/80 p-3 dark:border-gray-700 dark:bg-gray-800/40"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            Lot {index + 1}
+                          </p>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                            onClick={() => removeLot(index)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+
+                        <div className="grid gap-3">
+                          <Field label="Lot Number">
+                            <Input
+                              value={lot.lotNumber}
+                              onChange={e => updateLot(index, 'lotNumber', e.target.value)}
+                              placeholder="Optional"
+                              className={monoInputCls}
+                            />
+                          </Field>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <Field label="Expiry Date" required>
+                              <Input
+                                type="date"
+                                value={lot.expiryDate}
+                                onChange={e => updateLot(index, 'expiryDate', e.target.value)}
+                                className={cn(inputCls, lotErrors[index]?.expiryDate && 'border-destructive')}
+                              />
+                              {lotErrors[index]?.expiryDate && <p className="text-[10px] text-destructive">{lotErrors[index].expiryDate}</p>}
+                            </Field>
+
+                            <Field label="Quantity" required>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={lot.quantity}
+                                onChange={e => updateLot(index, 'quantity', e.target.value)}
+                                className={cn(monoInputCls, lotErrors[index]?.quantity && 'border-destructive')}
+                              />
+                              {lotErrors[index]?.quantity && <p className="text-[10px] text-destructive">{lotErrors[index].quantity}</p>}
+                            </Field>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => addLot(form.onHand !== '0' ? form.onHand : '')}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add lot
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Expiry tracking is off for this item. Turn it on to manage lot-specific expiry dates.
+                </p>
+              )}
             </div>
           </div>
 

@@ -40,11 +40,18 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog'
 import { cn } from '../../lib/utils'
-import { formatExpiryDate } from '../../lib/inventory-expiry'
+import {
+  formatExpiryDate,
+  getDaysUntilExpiry,
+  getExpiryStatus,
+  getNextNonExpiredLot,
+  getTrackedCoverage,
+} from '../../lib/inventory-expiry'
 
 interface InventoryTableProps {
   items: InventoryItem[]
@@ -80,6 +87,25 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   )
 }
 
+function ExpiryStatusBadge({ item }: { item: InventoryItem }): JSX.Element | null {
+  const status = getExpiryStatus(item)
+  if (status === 'untracked' || status === 'tracked-safe') return null
+  if (status === 'expired') return <Badge variant="destructive" className="px-1.5 py-0 text-[10px]">Expired</Badge>
+  if (status === 'expiring-30') return <Badge variant="destructive" className="px-1.5 py-0 text-[10px]">0-30d</Badge>
+  if (status === 'expiring-60') return <Badge variant="warning" className="px-1.5 py-0 text-[10px]">31-60d</Badge>
+  return <Badge variant="info" className="px-1.5 py-0 text-[10px]">61-90d</Badge>
+}
+
+function LotStatusBadge({ expiryDate }: { expiryDate: string }): JSX.Element {
+  const daysUntil = getDaysUntilExpiry(expiryDate)
+  if (daysUntil === null) return <Badge variant="secondary" className="text-[10px]">Unknown</Badge>
+  if (daysUntil < 0) return <Badge variant="destructive" className="text-[10px]">Expired</Badge>
+  if (daysUntil <= 30) return <Badge variant="destructive" className="text-[10px]">0-30d</Badge>
+  if (daysUntil <= 60) return <Badge variant="warning" className="text-[10px]">31-60d</Badge>
+  if (daysUntil <= 90) return <Badge variant="info" className="text-[10px]">61-90d</Badge>
+  return <Badge variant="secondary" className="text-[10px]">90+d</Badge>
+}
+
 export function InventoryTable({
   items,
   loading,
@@ -94,6 +120,14 @@ export function InventoryTable({
   const [collapsedVendors, setCollapsedVendors] = useState<Set<string>>(new Set())
   const [deleteTarget, setDeleteTarget] = useState<InventoryItem | null>(null)
   const [viewTarget, setViewTarget] = useState<InventoryItem | null>(null)
+  const viewTargetCoverage = useMemo(
+    () => viewTarget ? getTrackedCoverage(viewTarget) : null,
+    [viewTarget]
+  )
+  const viewTargetNextLot = useMemo(
+    () => viewTarget ? getNextNonExpiredLot(viewTarget) : null,
+    [viewTarget]
+  )
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds])
 
@@ -197,18 +231,14 @@ export function InventoryTable({
             <div className="flex items-center gap-1.5">
               <span className={cn(
                 'text-[11px] font-medium',
-                item.hasExpiredStock ? 'text-destructive' : 'text-charcoal-800 dark:text-gray-200'
+                getExpiryStatus(item) === 'expired' ? 'text-destructive' : 'text-charcoal-800 dark:text-gray-200'
               )}>
                 {formatExpiryDate(item.expiryDate)}
               </span>
-              {item.hasExpiredStock && (
-                <Badge variant="destructive" className="px-1.5 py-0 text-[10px]">
-                  Expired
-                </Badge>
-              )}
+              <ExpiryStatusBadge item={item} />
             </div>
             <div className="text-[10px] text-muted-foreground">
-              FIFO: <span className="font-mono">{item.fifoLotNumber ?? '—'}</span>
+              FIFO: <span className="font-mono">{item.fifoLotNumber || '—'}</span> · {item.lotCount ?? 0} lot{item.lotCount === 1 ? '' : 's'}
             </div>
           </div>
         )
@@ -461,54 +491,158 @@ export function InventoryTable({
 
       {/* Item detail dialog */}
       <Dialog open={viewTarget != null} onOpenChange={open => !open && setViewTarget(null)}>
-        <DialogContent className="max-w-sm border-silver-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+        <DialogContent className="max-w-4xl border-silver-200 dark:border-gray-700 bg-white dark:bg-gray-900">
           <DialogHeader>
             <DialogTitle className="text-sm pr-4 text-charcoal-900 dark:text-gray-100">{viewTarget?.description}</DialogTitle>
+            {viewTarget && (
+              <DialogDescription className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="font-mono">{viewTarget.itemCode}</span>
+                <span>{viewTarget.vendor}</span>
+                <ExpiryStatusBadge item={viewTarget} />
+              </DialogDescription>
+            )}
           </DialogHeader>
           {viewTarget && (
-            <div className="mt-1">
-              <DetailRow label="Item Code" value={<span className="font-mono">{viewTarget.itemCode}</span>} />
-              <DetailRow label="Vendor" value={viewTarget.vendor} />
-              <DetailRow label="Category" value={viewTarget.category || '—'} />
-              <DetailRow label="Pref. Vendor" value={viewTarget.prefVendor || '—'} />
-              <div className="my-2 border-t dark:border-gray-700" />
-              <DetailRow label="On Hand" value={
-                <span className={cn('font-mono font-semibold', viewTarget.onHand < 0 && 'text-destructive')}>
-                  {viewTarget.onHand.toLocaleString()}
-                </span>
-              } />
-              <DetailRow label="On PO" value={<span className="font-mono">{viewTarget.onPO.toLocaleString()}</span>} />
-              <DetailRow label="Reorder Pt" value={viewTarget.reorderPt != null ? viewTarget.reorderPt.toLocaleString() : '—'} />
-              <DetailRow label="Order Qty" value={viewTarget.order != null ? viewTarget.order.toLocaleString() : '—'} />
-              <DetailRow label="Next Delivery" value={viewTarget.nextDeliv || '—'} />
-              <DetailRow label="Expiry" value={formatExpiryDate(viewTarget.expiryDate)} />
-              <DetailRow label="FIFO Lot" value={<span className="font-mono">{viewTarget.lotTracking?.length ? (viewTarget.fifoLotNumber || '—') : 'N/A'}</span>} />
-              <DetailRow label="Tracked Lots" value={viewTarget.lotTracking?.length ? viewTarget.lotCount?.toLocaleString() : 'N/A'} />
-              <DetailRow label="Expired Qty" value={
-                viewTarget.lotTracking?.length ? (
-                  <span className={cn(
-                    'font-mono font-semibold',
-                    (viewTarget.expiredQuantity ?? 0) > 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'
+            <div className="mt-1 max-h-[72vh] overflow-y-auto pr-1 space-y-4">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-lg border border-silver-200 bg-gray-50/80 p-3 dark:border-gray-700 dark:bg-gray-800/40">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Earliest lot</p>
+                  <p className="mt-1 font-mono text-sm font-semibold text-charcoal-800 dark:text-gray-100">
+                    {viewTarget.lotTracking?.length ? (viewTarget.fifoLotNumber || '—') : 'N/A'}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">{formatExpiryDate(viewTarget.expiryDate)}</p>
+                </div>
+
+                <div className="rounded-lg border border-silver-200 bg-gray-50/80 p-3 dark:border-gray-700 dark:bg-gray-800/40">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Next active lot</p>
+                  <p className="mt-1 font-mono text-sm font-semibold text-charcoal-800 dark:text-gray-100">
+                    {viewTargetNextLot ? (viewTargetNextLot.lotNumber || '—') : 'N/A'}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {viewTargetNextLot
+                      ? `${formatExpiryDate(viewTargetNextLot.expiryDate)} · ${getDaysUntilExpiry(viewTargetNextLot.expiryDate)} days`
+                      : 'No upcoming non-expired lot'}
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-silver-200 bg-gray-50/80 p-3 dark:border-gray-700 dark:bg-gray-800/40">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Expired lots</p>
+                  <p className={cn(
+                    'mt-1 text-sm font-semibold',
+                    (viewTarget.expiredLotCount ?? 0) > 0 ? 'text-destructive' : 'text-charcoal-800 dark:text-gray-100'
                   )}>
-                    {(viewTarget.expiredQuantity ?? 0).toLocaleString()}
-                  </span>
-                ) : (
-                  'N/A'
-                )
-              } />
-              <DetailRow label="Sales / Week" value={<span className="font-mono">{viewTarget.salesPerWeek.toLocaleString()}</span>} />
-              {viewTarget.salesPerWeek > 0 && (
-                <DetailRow label="Weeks of Stock" value={
-                  <span className={cn(
-                    'font-mono font-semibold',
-                    (viewTarget.onHand / viewTarget.salesPerWeek) < 2 ? 'text-destructive'
-                      : (viewTarget.onHand / viewTarget.salesPerWeek) < 4 ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-emerald-600 dark:text-emerald-400'
-                  )}>
-                    {(viewTarget.onHand / viewTarget.salesPerWeek).toFixed(1)} wks
-                  </span>
-                } />
-              )}
+                    {(viewTarget.expiredLotCount ?? 0).toLocaleString()}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {(viewTarget.expiredQuantity ?? 0).toLocaleString()} expired qty
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-silver-200 bg-gray-50/80 p-3 dark:border-gray-700 dark:bg-gray-800/40">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Tracked coverage</p>
+                  <p className="mt-1 text-sm font-semibold text-charcoal-800 dark:text-gray-100">
+                    {viewTargetCoverage?.coveragePercent != null ? `${viewTargetCoverage.coveragePercent}%` : 'N/A'}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {viewTargetCoverage?.status === 'matched' && 'Lot tracking fully matches on hand.'}
+                    {viewTargetCoverage?.status === 'partial' && `${Math.abs(viewTargetCoverage.delta).toLocaleString()} units are not covered by lots.`}
+                    {viewTargetCoverage?.status === 'over' && `${viewTargetCoverage.delta.toLocaleString()} tracked units exceed on hand.`}
+                    {viewTargetCoverage?.status === 'no-on-hand' && 'Coverage is not available for zero or negative on hand.'}
+                    {viewTargetCoverage?.status === 'untracked' && 'Expiry tracking is not enabled for this item.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                <div className="rounded-lg border border-silver-200 p-4 dark:border-gray-700">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Item Snapshot</p>
+                  <DetailRow label="Item Code" value={<span className="font-mono">{viewTarget.itemCode}</span>} />
+                  <DetailRow label="Vendor" value={viewTarget.vendor} />
+                  <DetailRow label="Category" value={viewTarget.category || '—'} />
+                  <DetailRow label="Pref. Vendor" value={viewTarget.prefVendor || '—'} />
+                  <div className="my-2 border-t dark:border-gray-700" />
+                  <DetailRow label="On Hand" value={
+                    <span className={cn('font-mono font-semibold', viewTarget.onHand < 0 && 'text-destructive')}>
+                      {viewTarget.onHand.toLocaleString()}
+                    </span>
+                  } />
+                  <DetailRow label="Tracked Qty" value={
+                    viewTarget.lotTracking?.length
+                      ? <span className="font-mono">{(viewTarget.trackedQuantity ?? 0).toLocaleString()}</span>
+                      : 'N/A'
+                  } />
+                  <DetailRow label="On PO" value={<span className="font-mono">{viewTarget.onPO.toLocaleString()}</span>} />
+                  <DetailRow label="Reorder Pt" value={viewTarget.reorderPt != null ? viewTarget.reorderPt.toLocaleString() : '—'} />
+                  <DetailRow label="Order Qty" value={viewTarget.order != null ? viewTarget.order.toLocaleString() : '—'} />
+                  <DetailRow label="Next Delivery" value={viewTarget.nextDeliv || '—'} />
+                  <DetailRow label="Expiry" value={formatExpiryDate(viewTarget.expiryDate)} />
+                  <DetailRow label="Tracked Lots" value={viewTarget.lotTracking?.length ? viewTarget.lotCount?.toLocaleString() : 'N/A'} />
+                  <DetailRow label="Sales / Week" value={<span className="font-mono">{viewTarget.salesPerWeek.toLocaleString()}</span>} />
+                  {viewTarget.salesPerWeek > 0 && (
+                    <DetailRow label="Weeks of Stock" value={
+                      <span className={cn(
+                        'font-mono font-semibold',
+                        (viewTarget.onHand / viewTarget.salesPerWeek) < 2 ? 'text-destructive'
+                          : (viewTarget.onHand / viewTarget.salesPerWeek) < 4 ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-emerald-600 dark:text-emerald-400'
+                      )}>
+                        {(viewTarget.onHand / viewTarget.salesPerWeek).toFixed(1)} wks
+                      </span>
+                    } />
+                  )}
+                </div>
+
+                <div className="rounded-lg border border-silver-200 overflow-hidden dark:border-gray-700">
+                  <div className="px-4 py-3 border-b border-silver-200 bg-gray-50/80 dark:border-gray-700 dark:bg-gray-800/40">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Lot Breakdown</p>
+                        <p className="text-xs text-muted-foreground mt-1">All tracked lots, sorted by earliest expiry.</p>
+                      </div>
+                      {viewTargetCoverage?.coveragePercent != null && (
+                        <Badge variant={viewTargetCoverage.status === 'matched' ? 'success' : viewTargetCoverage.status === 'partial' ? 'warning' : 'info'}>
+                          {viewTargetCoverage.coveragePercent}%
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {viewTarget.lotTracking?.length ? (
+                    <div className="max-h-[420px] overflow-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-white dark:bg-gray-900 border-b border-silver-200 dark:border-gray-700">
+                          <tr>
+                            <th className="px-4 py-2 text-left font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Lot</th>
+                            <th className="px-3 py-2 text-left font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Expiry</th>
+                            <th className="px-3 py-2 text-right font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Qty</th>
+                            <th className="px-4 py-2 text-right font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-silver-200 dark:divide-gray-700">
+                          {viewTarget.lotTracking.map((lot, lotIndex) => (
+                            <tr key={`${lot.lotNumber}-${lot.expiryDate}-${lot.quantity}-${lotIndex}`}>
+                              <td className="px-4 py-2">
+                                <span className="font-mono text-charcoal-800 dark:text-gray-100">{lot.lotNumber || '—'}</span>
+                              </td>
+                              <td className="px-3 py-2 text-muted-foreground">{formatExpiryDate(lot.expiryDate)}</td>
+                              <td className="px-3 py-2 text-right font-mono text-charcoal-800 dark:text-gray-100">{lot.quantity.toLocaleString()}</td>
+                              <td className="px-4 py-2">
+                                <div className="flex justify-end">
+                                  <LotStatusBadge expiryDate={lot.expiryDate} />
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="px-4 py-6 text-xs text-muted-foreground">
+                      No lot-level expiry data is currently tracked for this item.
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2 border-t dark:border-gray-700 mt-2">
