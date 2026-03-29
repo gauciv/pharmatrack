@@ -1,6 +1,5 @@
 {
   "name": "pharma-tracker",
-  "version": "1.4.0",
   "description": "Pharmaceutical Inventory Management System",
   "main": "./out/main/index.js",
   "homepage": ".",

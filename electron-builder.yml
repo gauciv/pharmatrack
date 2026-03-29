@@ -19,7 +19,7 @@ win:
       arch:
         - x64
   icon: resources/icon.png
-  artifactName: ${productName}-Setup-${version}.${ext}
+  artifactName: ${productName}-Setup.${ext}
 
 nsis:
   oneClick: false
@@ -36,6 +36,6 @@ linux:
       arch:
         - x64
   icon: resources/icon.png
-  artifactName: ${productName}-Setup-${version}.${ext}
+  artifactName: ${productName}-Setup.${ext}
   category: Office
   description: Pharmaceutical Inventory Management System
