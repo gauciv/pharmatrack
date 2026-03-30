@@ -38,6 +38,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Sync app version from tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node -e "const fs=require('fs'); const path='package.json'; const pkg=JSON.parse(fs.readFileSync(path,'utf8')); pkg.version=process.env.RELEASE_TAG.replace(/^v/, ''); fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');"
+
       # Vite embeds VITE_* env vars at build time.
       # These secrets must be added under Settings → Secrets → Actions.
       - name: Build app (electron-vite)
@@ -57,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
-          # Matches PharmaTracker-Setup-x.y.z.exe
+          # Matches PharmaTracker-Setup.exe
           path: dist/*.exe
           retention-days: 1
 
@@ -91,6 +97,12 @@ jobs:
           rm -rf node_modules package-lock.json
           npm install
 
+      - name: Sync app version from tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node -e "const fs=require('fs'); const path='package.json'; const pkg=JSON.parse(fs.readFileSync(path,'utf8')); pkg.version=process.env.RELEASE_TAG.replace(/^v/, ''); fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');"
+
       - name: Build app (electron-vite)
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
@@ -108,7 +120,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-appimage
-          # Matches PharmaTracker-x.y.z.AppImage
+          # Matches PharmaTracker-Setup.AppImage
           path: dist/*.AppImage
           retention-days: 1
 
