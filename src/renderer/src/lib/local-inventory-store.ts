@@ -6,13 +6,19 @@
  * inventorySeed is used as the initial value but is never mutated.
  */
 import { inventorySeed } from './inventory-seed'
-import { InventoryItem } from '../types/inventory'
+import { InventoryItem, InventoryTransaction } from '../types/inventory'
 
 let _items: InventoryItem[] = [...inventorySeed]
+let _transactions: InventoryTransaction[] = []
 const _listeners = new Set<() => void>()
+const _transactionListeners = new Set<() => void>()
 
 function notify(): void {
   _listeners.forEach(l => l())
+}
+
+function notifyTransactions(): void {
+  _transactionListeners.forEach((listener) => listener())
 }
 
 export const localStore = {
@@ -49,5 +55,25 @@ export const localStore = {
   subscribe(listener: () => void): () => void {
     _listeners.add(listener)
     return () => _listeners.delete(listener)
+  },
+
+  getTransactions(): InventoryTransaction[] {
+    return _transactions
+  },
+
+  addTransaction(transaction: Omit<InventoryTransaction, 'id'>): void {
+    _transactions = [
+      {
+        id: `LOCAL-TXN-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        ...transaction,
+      },
+      ..._transactions,
+    ]
+    notifyTransactions()
+  },
+
+  subscribeTransactions(listener: () => void): () => void {
+    _transactionListeners.add(listener)
+    return () => _transactionListeners.delete(listener)
   },
 }

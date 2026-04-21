@@ -21,6 +21,8 @@ interface ItemSheetProps {
   item?: InventoryItem | null
   vendors: string[]
   categories: string[]
+  binLocations: string[]
+  palletNumbers: string[]
   onSubmit: (data: Omit<InventoryItem, 'id'>) => Promise<void>
 }
 
@@ -30,6 +32,8 @@ type FormData = {
   vendor: string
   category: string
   prefVendor: string
+  binLocation: string
+  palletNumber: string
   onHand: string
   reorderPt: string
   order: string
@@ -49,6 +53,7 @@ type EditableLot = {
 
 const emptyForm: FormData = {
   itemCode: '', description: '', vendor: '', category: '', prefVendor: '',
+  binLocation: '', palletNumber: '',
   onHand: '0', reorderPt: '', order: '', onPO: '0', nextDeliv: '', salesPerWeek: '0',
   trackExpiry: false, lotTracking: [],
 }
@@ -76,6 +81,8 @@ function toFormData(item: InventoryItem): FormData {
     vendor: item.vendor,
     category: item.category ?? '',
     prefVendor: item.prefVendor ?? '',
+    binLocation: item.binLocation ?? '',
+    palletNumber: item.palletNumber ?? '',
     onHand: String(item.onHand),
     reorderPt: item.reorderPt != null ? String(item.reorderPt) : '',
     order: item.order != null ? String(item.order) : '',
@@ -104,7 +111,16 @@ function Field({ label, required, children }: { label: string; required?: boolea
   )
 }
 
-export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSubmit }: ItemSheetProps): JSX.Element {
+export function ItemSheet({
+  open,
+  onOpenChange,
+  item,
+  vendors,
+  categories,
+  binLocations,
+  palletNumbers,
+  onSubmit,
+}: ItemSheetProps): JSX.Element {
   const isEdit = item != null
   const [form, setForm] = useState<FormData>(emptyForm)
   const [saving, setSaving] = useState(false)
@@ -235,6 +251,8 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
         vendor: form.vendor.trim(),
         category: form.category.trim(),
         prefVendor: form.prefVendor.trim(),
+        binLocation: form.binLocation.trim() || null,
+        palletNumber: form.palletNumber.trim() || null,
         onHand: Number(form.onHand) || 0,
         reorderPt: form.reorderPt.trim() !== '' ? Number(form.reorderPt) : null,
         order: form.order.trim() !== '' ? Number(form.order) : null,
@@ -329,6 +347,33 @@ export function ItemSheet({ open, onOpenChange, item, vendors, categories, onSub
                   placeholder="Preferred vendor"
                   className={inputCls}
                 />
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Bin Location">
+                <Input
+                  value={form.binLocation}
+                  onChange={e => set('binLocation', e.target.value)}
+                  list="bin-location-list"
+                  placeholder="e.g. A (1-4)"
+                  className={inputCls}
+                />
+                <datalist id="bin-location-list">
+                  {binLocations.map((binLocation) => <option key={binLocation} value={binLocation} />)}
+                </datalist>
+              </Field>
+              <Field label="Pallet Number">
+                <Input
+                  value={form.palletNumber}
+                  onChange={e => set('palletNumber', e.target.value)}
+                  list="pallet-number-list"
+                  placeholder="e.g. 3"
+                  className={inputCls}
+                />
+                <datalist id="pallet-number-list">
+                  {palletNumbers.map((palletNumber) => <option key={palletNumber} value={palletNumber} />)}
+                </datalist>
               </Field>
             </div>
 

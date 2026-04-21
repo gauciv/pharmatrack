@@ -10,6 +10,7 @@ import { isFirebaseConfigured } from './lib/firebase'
 import Login from './pages/Login'
 import DashboardHome from './pages/DashboardHome'
 import Inventory from './pages/Inventory'
+import Transactions from './pages/Transactions'
 import Forecast from './pages/Forecast'
 import Vendors from './pages/Vendors'
 import Settings from './pages/Settings'
@@ -37,6 +38,7 @@ function App(): JSX.Element {
             <Route path="/login" element={<Login />} />
             <Route path="/dashboard" element={wrap(<DashboardHome />)} />
             <Route path="/dashboard/inventory" element={wrap(<Inventory />)} />
+            <Route path="/dashboard/transactions" element={wrap(<Transactions />)} />
             <Route path="/dashboard/forecast" element={wrap(<Forecast />)} />
             <Route path="/dashboard/vendors" element={wrap(<Vendors />)} />
             <Route path="/dashboard/settings" element={wrap(<Settings />)} />

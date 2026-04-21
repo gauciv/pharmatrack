@@ -36,9 +36,23 @@ export default function Inventory(): JSX.Element {
     category: 'all',
     stockStatus: 'all',
     expiryStatus: 'all',
+    binLocation: 'all',
+    palletNumber: 'all',
   })
 
-  const { items, loading, vendors, categories, total, addItem, updateItem, deleteItem, deleteItems } =
+  const {
+    items,
+    loading,
+    vendors,
+    categories,
+    binLocations,
+    palletNumbers,
+    total,
+    addItem,
+    updateItem,
+    deleteItem,
+    deleteItems,
+  } =
     useInventory(filters)
 
   // Sheet state
@@ -56,6 +70,8 @@ export default function Inventory(): JSX.Element {
     category: filters.category,
     status: filters.stockStatus,
     expiry: filters.expiryStatus,
+    binLocation: filters.binLocation,
+    palletNumber: filters.palletNumber,
   }
   const exportFileName = buildExportFileName('Inventory', exportFilters)
   const handleExport = useCallback((fileName: string, format: ExportFormat) => {
@@ -94,12 +110,21 @@ export default function Inventory(): JSX.Element {
   }
 
   function resetFilters(): void {
-    setFilters({ search: '', vendor: 'all', category: 'all', stockStatus: 'all', expiryStatus: 'all' })
+    setFilters({
+      search: '',
+      vendor: 'all',
+      category: 'all',
+      stockStatus: 'all',
+      expiryStatus: 'all',
+      binLocation: 'all',
+      palletNumber: 'all',
+    })
   }
 
   const hasActiveFilters =
     filters.search !== '' || filters.vendor !== 'all' ||
-    filters.category !== 'all' || filters.stockStatus !== 'all' || filters.expiryStatus !== 'all'
+    filters.category !== 'all' || filters.stockStatus !== 'all' || filters.expiryStatus !== 'all' ||
+    filters.binLocation !== 'all' || filters.palletNumber !== 'all'
 
   return (
     <>
@@ -159,7 +184,7 @@ export default function Inventory(): JSX.Element {
           <div className="relative flex-1 min-w-[180px] max-w-[300px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Search code or description…"
+              placeholder="Search code, description, bin, or pallet…"
               value={filters.search}
               onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
               className="pl-8 h-8 text-xs bg-gray-50 dark:bg-gray-800 border-silver-300 dark:border-gray-700"
@@ -209,10 +234,27 @@ export default function Inventory(): JSX.Element {
               <SelectItem value="all">All expiry</SelectItem>
               <SelectItem value="untracked">Untracked</SelectItem>
               <SelectItem value="expired">Expired</SelectItem>
-              <SelectItem value="expiring-30">Expiring in 30 days</SelectItem>
-              <SelectItem value="expiring-60">Expiring in 31-60 days</SelectItem>
-              <SelectItem value="expiring-90">Expiring in 61-90 days</SelectItem>
-              <SelectItem value="tracked-safe">Tracked &gt; 90 days</SelectItem>
+              <SelectItem value="expiring-3m">Less than 3 months</SelectItem>
+              <SelectItem value="expiring-1y">Less than 1 year</SelectItem>
+              <SelectItem value="expiring-over-1y">More than 1 year</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filters.binLocation} onValueChange={v => setFilters(f => ({ ...f, binLocation: v }))}>
+            <SelectTrigger className="h-8 text-xs w-[190px] bg-gray-50 dark:bg-gray-800 border-silver-300 dark:border-gray-700">
+              <SelectValue placeholder="All bins" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All bins</SelectItem>
+              {binLocations.map((bin) => <SelectItem key={bin} value={bin}>{bin}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filters.palletNumber} onValueChange={v => setFilters(f => ({ ...f, palletNumber: v }))}>
+            <SelectTrigger className="h-8 text-xs w-[170px] bg-gray-50 dark:bg-gray-800 border-silver-300 dark:border-gray-700">
+              <SelectValue placeholder="All pallets" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All pallets</SelectItem>
+              {palletNumbers.map((pallet) => <SelectItem key={pallet} value={pallet}>{pallet}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -237,6 +279,8 @@ export default function Inventory(): JSX.Element {
         item={editTarget}
         vendors={vendors}
         categories={categories}
+        binLocations={binLocations}
+        palletNumbers={palletNumbers}
         onSubmit={handleSheetSubmit}
       />
 

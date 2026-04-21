@@ -28,6 +28,25 @@ export interface InventoryItem {
   expiredQuantity?: number
   expiredLotCount?: number
   hasExpiredStock?: boolean
+  binLocation?: string | null
+  palletNumber?: string | null
+}
+
+export type InventoryTransactionType = 'stock-in' | 'stock-out' | 'stock-adjustment'
+
+export interface InventoryTransaction {
+  id: string
+  itemId: string
+  itemCode: string
+  description: string
+  vendor: string
+  previousOnHand: number
+  newOnHand: number
+  delta: number
+  type: InventoryTransactionType
+  recordedAt: string
+  binLocation?: string | null
+  palletNumber?: string | null
 }
 
 export type StockStatus = 'in-stock' | 'low-stock' | 'out-of-stock'

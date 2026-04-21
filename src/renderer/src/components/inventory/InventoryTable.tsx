@@ -89,21 +89,20 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 
 function ExpiryStatusBadge({ item }: { item: InventoryItem }): JSX.Element | null {
   const status = getExpiryStatus(item)
-  if (status === 'untracked' || status === 'tracked-safe') return null
+  if (status === 'untracked') return null
   if (status === 'expired') return <Badge variant="destructive" className="px-1.5 py-0 text-[10px]">Expired</Badge>
-  if (status === 'expiring-30') return <Badge variant="destructive" className="px-1.5 py-0 text-[10px]">0-30d</Badge>
-  if (status === 'expiring-60') return <Badge variant="warning" className="px-1.5 py-0 text-[10px]">31-60d</Badge>
-  return <Badge variant="info" className="px-1.5 py-0 text-[10px]">61-90d</Badge>
+  if (status === 'expiring-3m') return <Badge variant="destructive" className="px-1.5 py-0 text-[10px]">&lt; 3m</Badge>
+  if (status === 'expiring-1y') return <Badge variant="warning" className="px-1.5 py-0 text-[10px]">&lt; 1y</Badge>
+  return <Badge variant="success" className="px-1.5 py-0 text-[10px]">&gt; 1y</Badge>
 }
 
 function LotStatusBadge({ expiryDate }: { expiryDate: string }): JSX.Element {
   const daysUntil = getDaysUntilExpiry(expiryDate)
   if (daysUntil === null) return <Badge variant="secondary" className="text-[10px]">Unknown</Badge>
   if (daysUntil < 0) return <Badge variant="destructive" className="text-[10px]">Expired</Badge>
-  if (daysUntil <= 30) return <Badge variant="destructive" className="text-[10px]">0-30d</Badge>
-  if (daysUntil <= 60) return <Badge variant="warning" className="text-[10px]">31-60d</Badge>
-  if (daysUntil <= 90) return <Badge variant="info" className="text-[10px]">61-90d</Badge>
-  return <Badge variant="secondary" className="text-[10px]">90+d</Badge>
+  if (daysUntil <= 90) return <Badge variant="destructive" className="text-[10px]">&lt; 3m</Badge>
+  if (daysUntil < 365) return <Badge variant="warning" className="text-[10px]">&lt; 1y</Badge>
+  return <Badge variant="success" className="text-[10px]">&gt; 1y</Badge>
 }
 
 export function InventoryTable({
@@ -202,6 +201,20 @@ export function InventoryTable({
         : <span className="text-[11px] text-silver-400">—</span>,
       size: 140,
     }),
+    columnHelper.accessor('binLocation', {
+      header: 'Bin',
+      cell: info => info.getValue()
+        ? <span className="text-[11px] text-charcoal-700 dark:text-gray-300">{info.getValue()}</span>
+        : <span className="text-[11px] text-silver-400">—</span>,
+      size: 145,
+    }),
+    columnHelper.accessor('palletNumber', {
+      header: 'Pallet',
+      cell: info => info.getValue()
+        ? <span className="font-mono text-[11px] text-charcoal-700 dark:text-gray-300">{info.getValue()}</span>
+        : <span className="text-[11px] text-silver-400">—</span>,
+      size: 110,
+    }),
     columnHelper.accessor('onHand', {
       header: 'On Hand',
       cell: info => {
@@ -229,12 +242,20 @@ export function InventoryTable({
         return (
           <div className="space-y-0.5">
             <div className="flex items-center gap-1.5">
-              <span className={cn(
-                'text-[11px] font-medium',
-                getExpiryStatus(item) === 'expired' ? 'text-destructive' : 'text-charcoal-800 dark:text-gray-200'
-              )}>
-                {formatExpiryDate(item.expiryDate)}
-              </span>
+              {(() => {
+                const status = getExpiryStatus(item)
+                const textClass =
+                  status === 'expired' || status === 'expiring-3m'
+                    ? 'text-destructive'
+                    : status === 'expiring-1y'
+                      ? 'text-amber-700 dark:text-amber-400'
+                      : 'text-emerald-700 dark:text-emerald-400'
+                return (
+                  <span className={cn('text-[11px] font-medium', textClass)}>
+                    {formatExpiryDate(item.expiryDate)}
+                  </span>
+                )
+              })()}
               <ExpiryStatusBadge item={item} />
             </div>
             <div className="text-[10px] text-muted-foreground">
@@ -309,7 +330,7 @@ export function InventoryTable({
   })
 
   const sortedRows = table.getRowModel().rows
-  const COL_COUNT = 9
+  const COL_COUNT = 11
 
   const groupedByVendor = useMemo(() => {
     const groups: { vendor: string; rows: typeof sortedRows }[] = []
@@ -560,6 +581,8 @@ export function InventoryTable({
                   <DetailRow label="Vendor" value={viewTarget.vendor} />
                   <DetailRow label="Category" value={viewTarget.category || '—'} />
                   <DetailRow label="Pref. Vendor" value={viewTarget.prefVendor || '—'} />
+                  <DetailRow label="Bin Location" value={viewTarget.binLocation || '—'} />
+                  <DetailRow label="Pallet Number" value={viewTarget.palletNumber || '—'} />
                   <div className="my-2 border-t dark:border-gray-700" />
                   <DetailRow label="On Hand" value={
                     <span className={cn('font-mono font-semibold', viewTarget.onHand < 0 && 'text-destructive')}>

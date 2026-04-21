@@ -6,15 +6,18 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
+  query,
+  orderBy,
   QuerySnapshot,
   DocumentData,
   writeBatch
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from './firebase'
-import { InventoryItem } from '../types/inventory'
+import { InventoryItem, InventoryTransaction } from '../types/inventory'
 import { inventorySeed } from './inventory-seed'
 
 const COLLECTION = 'inventory'
+const TRANSACTIONS_COLLECTION = 'inventory_transactions'
 
 function requireFirebase(fnName: string): void {
   if (!isFirebaseConfigured) throw new Error(`Firebase not configured — cannot call ${fnName}`)
@@ -98,5 +101,31 @@ export function subscribeToInventory(
   return onSnapshot(collection(db, COLLECTION), (snapshot: QuerySnapshot<DocumentData>) => {
     const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as InventoryItem))
     callback(items)
+  })
+}
+
+export async function addInventoryTransaction(
+  data: Omit<InventoryTransaction, 'id'>
+): Promise<InventoryTransaction> {
+  requireFirebase('addInventoryTransaction')
+  const ref = await addDoc(collection(db, TRANSACTIONS_COLLECTION), data)
+  return { id: ref.id, ...data }
+}
+
+export function subscribeToInventoryTransactions(
+  callback: (transactions: InventoryTransaction[]) => void
+): () => void {
+  requireFirebase('subscribeToInventoryTransactions')
+  const transactionQuery = query(
+    collection(db, TRANSACTIONS_COLLECTION),
+    orderBy('recordedAt', 'desc')
+  )
+
+  return onSnapshot(transactionQuery, (snapshot: QuerySnapshot<DocumentData>) => {
+    const transactions = snapshot.docs.map((docItem) => ({
+      id: docItem.id,
+      ...docItem.data(),
+    } as InventoryTransaction))
+    callback(transactions)
   })
 }

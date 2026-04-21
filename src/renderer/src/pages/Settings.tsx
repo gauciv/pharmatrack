@@ -26,7 +26,7 @@ import { downloadPdf, downloadTextFile } from '../lib/export-download'
 
 function exportToCSV(items: InventoryItem[]): void {
   const headers = ['Item Code', 'Description', 'Vendor', 'Category', 'Pref Vendor',
-    'On Hand', 'Expiry', 'FIFO Lot', 'Expired Qty', 'Reorder Pt', 'Order Qty', 'On PO', 'Next Delivery', 'Sales/Week']
+    'Bin Location', 'Pallet Number', 'On Hand', 'Expiry', 'FIFO Lot', 'Expired Qty', 'Reorder Pt', 'Order Qty', 'On PO', 'Next Delivery', 'Sales/Week']
   const escape = (v: string | number | null | undefined) => {
     if (v == null) return ''
     const s = String(v)
@@ -34,7 +34,7 @@ function exportToCSV(items: InventoryItem[]): void {
   }
   const rows = items.map(i => [
     escape(i.itemCode), escape(i.description), escape(i.vendor),
-    escape(i.category), escape(i.prefVendor), i.onHand,
+    escape(i.category), escape(i.prefVendor), escape(i.binLocation), escape(i.palletNumber), i.onHand,
     escape(formatExpiryDate(i.expiryDate)), escape(i.fifoLotNumber), i.lotTracking?.length ? (i.expiredQuantity ?? 0) : 'N/A',
     i.reorderPt ?? '', i.order ?? '', i.onPO, escape(i.nextDeliv), i.salesPerWeek,
   ].join(','))
@@ -62,12 +62,14 @@ function exportToPDF(items: InventoryItem[]): void {
   autoTable(doc, {
     startY: 30,
     theme: 'grid',
-    head: [['Item Code', 'Description', 'Vendor', 'Category', 'On Hand', 'Expiry', 'FIFO Lot', 'Expired Qty', 'On PO', 'Sales/Wk']],
+    head: [['Item Code', 'Description', 'Vendor', 'Category', 'Bin', 'Pallet', 'On Hand', 'Expiry', 'FIFO Lot', 'Expired Qty', 'On PO', 'Sales/Wk']],
     body: items.map(i => [
       i.itemCode,
       i.description,
       i.vendor,
       i.category ?? '—',
+      i.binLocation ?? '—',
+      i.palletNumber ?? '—',
       i.onHand.toLocaleString(),
       formatExpiryDate(i.expiryDate),
       i.fifoLotNumber || '—',
@@ -95,12 +97,14 @@ function exportToPDF(items: InventoryItem[]): void {
       1: { cellWidth: 58 },
       2: { cellWidth: 28 },
       3: { cellWidth: 18 },
-      4: { halign: 'right' },
-      5: { cellWidth: 20 },
-      6: { cellWidth: 20 },
-      7: { halign: 'right' },
+      4: { cellWidth: 18 },
+      5: { cellWidth: 12, halign: 'center' },
+      6: { halign: 'right' },
+      7: { cellWidth: 20 },
       8: { halign: 'right' },
       9: { halign: 'right' },
+      10: { halign: 'right' },
+      11: { halign: 'right' },
     },
     margin: { left: 14, right: 14 },
   })

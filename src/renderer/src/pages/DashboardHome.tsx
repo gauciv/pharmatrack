@@ -10,6 +10,7 @@ import {
   getDaysUntilExpiry,
   getExpiryStatus,
   getNextNonExpiredLot,
+  type InventoryExpiryStatus,
 } from '../lib/inventory-expiry'
 
 const CHART_COLORS = ['#1060C0', '#0D2B52', '#3B82F6', '#60A5FA', '#93C5FD', '#2563EB', '#7C3AED', '#6B7280']
@@ -59,10 +60,11 @@ const emptyFilters: InventoryFilters = {
 
 const HIGH_VOLUME_THRESHOLD = 1000
 
-function getExpiryBadgeVariant(status: 'expiring-30' | 'expiring-60' | 'expiring-90'): 'destructive' | 'warning' | 'info' {
-  if (status === 'expiring-30') return 'destructive'
-  if (status === 'expiring-60') return 'warning'
-  return 'info'
+function getExpiryBadgeVariant(status: InventoryExpiryStatus): 'destructive' | 'warning' | 'success' | 'secondary' {
+  if (status === 'expired' || status === 'expiring-3m') return 'destructive'
+  if (status === 'expiring-1y') return 'warning'
+  if (status === 'expiring-over-1y') return 'success'
+  return 'secondary'
 }
 
 export default function DashboardHome(): JSX.Element {
@@ -80,40 +82,61 @@ export default function DashboardHome(): JSX.Element {
       .sort((a, b) => (a.expiryDate ?? '').localeCompare(b.expiryDate ?? '') || a.description.localeCompare(b.description)),
     [items]
   )
+  const expiryRows = useMemo(() => (
+    items.map((item) => ({
+      item,
+      status: getExpiryStatus(item),
+      nextLot: getNextNonExpiredLot(item),
+    }))
+  ), [items])
+  const redExpiry = useMemo(
+    () => expiryRows.filter((entry) => entry.status === 'expired' || entry.status === 'expiring-3m'),
+    [expiryRows]
+  )
+  const orangeExpiry = useMemo(
+    () => expiryRows.filter((entry) => entry.status === 'expiring-1y'),
+    [expiryRows]
+  )
+  const greenExpiry = useMemo(
+    () => expiryRows.filter((entry) => entry.status === 'expiring-over-1y'),
+    [expiryRows]
+  )
   const expiryWatchlist = useMemo(() => (
-    items
-      .map(item => {
-        const status = getExpiryStatus(item)
-        if (status !== 'expiring-30' && status !== 'expiring-60' && status !== 'expiring-90') return null
-
-        const nextLot = getNextNonExpiredLot(item)
-        if (!nextLot) return null
-
-        return {
-          item,
-          status,
-          nextLot,
-          daysUntil: getDaysUntilExpiry(nextLot.expiryDate) ?? 0,
-        }
-      })
-      .filter((entry): entry is NonNullable<typeof entry> => entry != null)
+    expiryRows
+      .filter((entry): entry is typeof entry & { nextLot: NonNullable<typeof entry.nextLot> } => (
+        entry.status !== 'untracked' && entry.nextLot != null
+      ))
+      .map((entry) => ({
+        ...entry,
+        daysUntil: getDaysUntilExpiry(entry.nextLot.expiryDate) ?? 0,
+      }))
       .sort((a, b) => (
         a.nextLot.expiryDate.localeCompare(b.nextLot.expiryDate) ||
         a.item.description.localeCompare(b.item.description)
       ))
-  ), [items])
-  const expiring30 = useMemo(
-    () => expiryWatchlist.filter(entry => entry.status === 'expiring-30'),
-    [expiryWatchlist]
-  )
-  const expiring60 = useMemo(
-    () => expiryWatchlist.filter(entry => entry.status === 'expiring-60'),
-    [expiryWatchlist]
-  )
-  const expiring90 = useMemo(
-    () => expiryWatchlist.filter(entry => entry.status === 'expiring-90'),
-    [expiryWatchlist]
-  )
+  ), [expiryRows])
+
+  const redSoonestDate = useMemo(() => {
+    const candidates = redExpiry
+      .map((entry) => entry.nextLot?.expiryDate ?? entry.item.expiryDate)
+      .filter((value): value is string => Boolean(value))
+      .sort((a, b) => a.localeCompare(b))
+    return candidates[0] ?? null
+  }, [redExpiry])
+  const orangeSoonestDate = useMemo(() => {
+    const candidates = orangeExpiry
+      .map((entry) => entry.nextLot?.expiryDate)
+      .filter((value): value is string => Boolean(value))
+      .sort((a, b) => a.localeCompare(b))
+    return candidates[0] ?? null
+  }, [orangeExpiry])
+  const greenSoonestDate = useMemo(() => {
+    const candidates = greenExpiry
+      .map((entry) => entry.nextLot?.expiryDate)
+      .filter((value): value is string => Boolean(value))
+      .sort((a, b) => a.localeCompare(b))
+    return candidates[0] ?? null
+  }, [greenExpiry])
   const vendorSummary = useMemo(() => {
     const map = new Map<string, { skus: number; onHand: number; salesPerWeek: number }>()
     items.forEach(i => {
@@ -190,34 +213,34 @@ export default function DashboardHome(): JSX.Element {
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <StatCard
-            title="Expiring in 30 Days"
-            value={expiring30.length}
-            sub={expiring30[0] ? `Soonest ${formatExpiryDate(expiring30[0].nextLot.expiryDate)}` : 'No items due in the next 30 days'}
+            title="Red (Expired / <3 Months)"
+            value={redExpiry.length}
+            sub={redSoonestDate ? `Soonest ${formatExpiryDate(redSoonestDate)}` : 'No products in red status'}
             icon={AlertTriangle}
             iconColor="text-destructive"
             iconBg="bg-red-50 dark:bg-red-900/30"
-            valueColor={expiring30.length > 0 ? 'text-destructive' : undefined}
-            badge={expiring30.length > 0 ? { label: 'Urgent', color: 'bg-red-50 dark:bg-red-900/30 text-destructive' } : undefined}
+            valueColor={redExpiry.length > 0 ? 'text-destructive' : undefined}
+            badge={redExpiry.length > 0 ? { label: 'Urgent', color: 'bg-red-50 dark:bg-red-900/30 text-destructive' } : undefined}
           />
           <StatCard
-            title="Expiring in 31-60 Days"
-            value={expiring60.length}
-            sub={expiring60[0] ? `Soonest ${formatExpiryDate(expiring60[0].nextLot.expiryDate)}` : 'Nothing currently queued in this bucket'}
+            title="Orange (<1 Year)"
+            value={orangeExpiry.length}
+            sub={orangeSoonestDate ? `Soonest ${formatExpiryDate(orangeSoonestDate)}` : 'No products in orange status'}
             icon={AlertTriangle}
             iconColor="text-amber-600"
             iconBg="bg-amber-50 dark:bg-amber-900/30"
-            valueColor={expiring60.length > 0 ? 'text-amber-700 dark:text-amber-400' : undefined}
-            badge={expiring60.length > 0 ? { label: 'Watch', color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' } : undefined}
+            valueColor={orangeExpiry.length > 0 ? 'text-amber-700 dark:text-amber-400' : undefined}
+            badge={orangeExpiry.length > 0 ? { label: 'Watch', color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' } : undefined}
           />
           <StatCard
-            title="Expiring in 61-90 Days"
-            value={expiring90.length}
-            sub={expiring90[0] ? `Soonest ${formatExpiryDate(expiring90[0].nextLot.expiryDate)}` : 'No upcoming items within 90 days'}
+            title="Green (>1 Year)"
+            value={greenExpiry.length}
+            sub={greenSoonestDate ? `Soonest ${formatExpiryDate(greenSoonestDate)}` : 'No products currently beyond one year'}
             icon={AlertTriangle}
-            iconColor="text-brand"
-            iconBg="bg-blue-50 dark:bg-blue-900/30"
-            valueColor={expiring90.length > 0 ? 'text-brand' : undefined}
-            badge={expiring90.length > 0 ? { label: 'Plan', color: 'bg-blue-50 dark:bg-blue-900/30 text-brand dark:text-blue-300' } : undefined}
+            iconColor="text-emerald-600"
+            iconBg="bg-emerald-50 dark:bg-emerald-900/30"
+            valueColor={greenExpiry.length > 0 ? 'text-emerald-700 dark:text-emerald-400' : undefined}
+            badge={greenExpiry.length > 0 ? { label: 'Stable', color: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' } : undefined}
           />
         </div>
 
@@ -329,7 +352,7 @@ export default function DashboardHome(): JSX.Element {
           <CardContent className="pt-3">
             {expiryWatchlist.length === 0 ? (
               <p className="text-xs text-muted-foreground">
-                No tracked products are scheduled to expire within the next 90 days.
+                No tracked products currently have an upcoming lot expiry.
               </p>
             ) : (
               <div className="space-y-2">
@@ -339,7 +362,7 @@ export default function DashboardHome(): JSX.Element {
                       <div className="flex items-center gap-2">
                         <p className="font-medium text-charcoal-800 dark:text-gray-100 truncate">{item.description}</p>
                         <Badge variant={getExpiryBadgeVariant(status)} className="text-[10px]">
-                          {status === 'expiring-30' ? '0-30d' : status === 'expiring-60' ? '31-60d' : '61-90d'}
+                          {status === 'expired' ? 'Expired' : status === 'expiring-3m' ? '< 3m' : status === 'expiring-1y' ? '< 1y' : '> 1y'}
                         </Badge>
                       </div>
                       <p className="text-muted-foreground">

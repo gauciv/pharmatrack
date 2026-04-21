@@ -1,13 +1,13 @@
 import { lotTrackingSeed } from './lot-tracking-seed'
 import { InventoryItem, InventoryLot } from '../types/inventory'
+import { withBinPalletReference } from './bin-pallet-reference'
 
 export type InventoryExpiryStatus =
   | 'untracked'
   | 'expired'
-  | 'expiring-30'
-  | 'expiring-60'
-  | 'expiring-90'
-  | 'tracked-safe'
+  | 'expiring-3m'
+  | 'expiring-1y'
+  | 'expiring-over-1y'
 
 export interface TrackedCoverage {
   trackedQuantity: number
@@ -120,28 +120,25 @@ export function getExpiryStatus(
   if ((item.expiredQuantity ?? 0) > 0) return 'expired'
 
   const nextLot = getNextNonExpiredLot(item, today)
-  if (!nextLot) return 'tracked-safe'
+  if (!nextLot) return 'expired'
 
   const daysUntil = getDaysUntilExpiry(nextLot.expiryDate, today)
-  if (daysUntil === null) return 'tracked-safe'
-  if (daysUntil <= 30) return 'expiring-30'
-  if (daysUntil <= 60) return 'expiring-60'
-  if (daysUntil <= 90) return 'expiring-90'
-  return 'tracked-safe'
+  if (daysUntil === null) return 'expiring-over-1y'
+  if (daysUntil <= 90) return 'expiring-3m'
+  if (daysUntil < 365) return 'expiring-1y'
+  return 'expiring-over-1y'
 }
 
 export function getExpiryStatusLabel(status: InventoryExpiryStatus): string {
   switch (status) {
     case 'expired':
       return 'Expired'
-    case 'expiring-30':
-      return '0-30 days'
-    case 'expiring-60':
-      return '31-60 days'
-    case 'expiring-90':
-      return '61-90 days'
-    case 'tracked-safe':
-      return 'Tracked'
+    case 'expiring-3m':
+      return '< 3 months'
+    case 'expiring-1y':
+      return '< 1 year'
+    case 'expiring-over-1y':
+      return '> 1 year'
     default:
       return 'Untracked'
   }
@@ -190,7 +187,7 @@ export function getTrackedCoverage(
 export function enrichInventoryItem(item: InventoryItem, today = new Date()): InventoryItem {
   const lotTracking = getLotTracking(item)
   if (lotTracking.length === 0) {
-    return {
+    return withBinPalletReference({
       ...item,
       expiryDate: null,
       fifoLotNumber: null,
@@ -200,13 +197,13 @@ export function enrichInventoryItem(item: InventoryItem, today = new Date()): In
       expiredLotCount: 0,
       hasExpiredStock: false,
       lotTracking: getManualLotTracking(item) ?? [],
-    }
+    })
   }
 
   const todayIso = getTodayIso(today)
   const expiredLots = lotTracking.filter((lot) => lot.expiryDate < todayIso)
 
-  return {
+  return withBinPalletReference({
     ...item,
     expiryDate: lotTracking[0]?.expiryDate ?? null,
     fifoLotNumber: lotTracking[0]?.lotNumber ?? null,
@@ -216,7 +213,7 @@ export function enrichInventoryItem(item: InventoryItem, today = new Date()): In
     expiredQuantity: expiredLots.reduce((sum, lot) => sum + lot.quantity, 0),
     expiredLotCount: expiredLots.length,
     hasExpiredStock: expiredLots.length > 0,
-  }
+  })
 }
 
 export function formatExpiryDate(expiryDate?: string | null): string {

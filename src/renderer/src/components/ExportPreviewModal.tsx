@@ -14,6 +14,8 @@ export interface ExportFilters {
   category?: string
   status?: string
   expiry?: string
+  binLocation?: string
+  palletNumber?: string
 }
 
 interface ExportPreviewModalProps {
@@ -37,6 +39,8 @@ export function buildExportFileName(
   if (filters.category && filters.category !== 'all') parts.push(filters.category)
   if (filters.status && filters.status !== 'all') parts.push(filters.status)
   if (filters.expiry && filters.expiry !== 'all') parts.push(filters.expiry)
+  if (filters.binLocation && filters.binLocation !== 'all') parts.push(filters.binLocation)
+  if (filters.palletNumber && filters.palletNumber !== 'all') parts.push(`pallet-${filters.palletNumber}`)
   const date = new Date().toISOString().slice(0, 10)
   parts.push(date)
   return parts.join('_').replace(/\s+/g, '-')
@@ -77,6 +81,8 @@ export function ExportPreviewModal({
     category: 'Category',
     status: 'Stock',
     expiry: 'Expiry',
+    binLocation: 'Bin',
+    palletNumber: 'Pallet',
   }
 
   const formatFilterValue = (value: string): string =>

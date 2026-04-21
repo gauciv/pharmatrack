@@ -9,7 +9,7 @@ import { downloadPdf, downloadTextFile } from './export-download'
 export function exportInventoryCSV(items: InventoryItem[], fileName?: string): void {
   const headers = [
     'Item Code', 'Description', 'Vendor', 'Category', 'Pref. Vendor',
-    'Reorder Pt', 'On Hand', 'Expiry', 'FIFO Lot', 'Expired Qty', 'Order', 'On PO', 'Next Delivery',
+    'Bin Location', 'Pallet Number', 'Reorder Pt', 'On Hand', 'Expiry', 'FIFO Lot', 'Expired Qty', 'Order', 'On PO', 'Next Delivery',
     'Sales/Wk', 'Stock Status',
   ]
 
@@ -25,6 +25,8 @@ export function exportInventoryCSV(items: InventoryItem[], fileName?: string): v
     escape(i.vendor),
     escape(i.category || ''),
     escape(i.prefVendor || ''),
+    escape(i.binLocation || ''),
+    escape(i.palletNumber || ''),
     i.reorderPt ?? '',
     i.onHand,
     escape(formatExpiryDate(i.expiryDate)),
@@ -79,12 +81,14 @@ export function exportInventoryPDF(items: InventoryItem[], fileName?: string): v
   autoTable(doc, {
     startY: 30,
     theme: 'grid',
-    head: [['Item Code', 'Description', 'Vendor', 'Category', 'On Hand', 'Expiry', 'FIFO Lot', 'Expired Qty', 'On PO', 'Sales/Wk', 'Status']],
+    head: [['Item Code', 'Description', 'Vendor', 'Category', 'Bin', 'Pallet', 'On Hand', 'Expiry', 'FIFO Lot', 'Expired Qty', 'On PO', 'Sales/Wk', 'Status']],
     body: items.map(i => [
       i.itemCode,
       i.description,
       i.vendor,
       i.category || '\u2014',
+      i.binLocation || '\u2014',
+      i.palletNumber || '\u2014',
       i.onHand.toLocaleString(),
       formatExpiryDate(i.expiryDate),
       i.fifoLotNumber || '\u2014',
@@ -110,16 +114,18 @@ export function exportInventoryPDF(items: InventoryItem[], fileName?: string): v
     alternateRowStyles: { fillColor: [235, 243, 255] },
     columnStyles: {
       0: { cellWidth: 20 },
-      1: { cellWidth: 48 },
+      1: { cellWidth: 38 },
       2: { cellWidth: 28 },
-      3: { cellWidth: 18 },
-      4: { halign: 'right' },
-      5: { cellWidth: 20 },
-      6: { cellWidth: 20 },
-      7: { halign: 'right' },
-      8: { halign: 'right' },
+      3: { cellWidth: 17 },
+      4: { cellWidth: 18 },
+      5: { cellWidth: 12, halign: 'center' },
+      6: { halign: 'right' },
+      7: { cellWidth: 20 },
+      8: { cellWidth: 20 },
       9: { halign: 'right' },
-      10: { cellWidth: 14, halign: 'center' },
+      10: { halign: 'right' },
+      11: { halign: 'right' },
+      12: { cellWidth: 14, halign: 'center' },
     },
     margin: { left: 14, right: 14 },
     didParseCell: (data) => {
