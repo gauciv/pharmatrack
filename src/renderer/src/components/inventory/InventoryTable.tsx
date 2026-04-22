@@ -60,6 +60,7 @@ interface InventoryTableProps {
   selectedIds: string[]
   onSelectionChange: (ids: string[]) => void
   onEdit: (item: InventoryItem) => void
+  onAdjust: (item: InventoryItem) => void
   onDelete: (id: string) => void
   paginate?: boolean
 }
@@ -126,6 +127,7 @@ export function InventoryTable({
   selectedIds,
   onSelectionChange,
   onEdit,
+  onAdjust,
   onDelete,
   paginate = false,
 }: InventoryTableProps) {
@@ -336,6 +338,9 @@ export function InventoryTable({
             <DropdownMenuItem className="gap-2 text-xs cursor-pointer" onClick={() => onEdit(info.row.original)}>
               <Pencil className="h-3.5 w-3.5 text-muted-foreground" /> Edit
             </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2 text-xs cursor-pointer" onClick={() => onAdjust(info.row.original)}>
+              <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" /> Adjust stock
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="gap-2 text-xs cursor-pointer text-destructive focus:text-destructive"
@@ -348,7 +353,7 @@ export function InventoryTable({
       ),
     }),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [selectedSet])
+  ], [onAdjust, onDelete, onEdit, selectedSet])
 
   const effectivePagination = paginate ? pagination : { pageIndex: 0, pageSize: items.length || 1 }
 
@@ -704,6 +709,19 @@ export function InventoryTable({
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2 border-t dark:border-gray-700 mt-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+              onClick={() => {
+                if (!viewTarget) return
+                const target = viewTarget
+                setViewTarget(null)
+                onAdjust(target)
+              }}
+            >
+              <ArrowUpDown className="h-3 w-3 mr-1" /> Adjust stock
+            </Button>
             <Button size="sm" variant="outline" className="dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" onClick={() => { setViewTarget(null); onEdit(viewTarget!) }}>
               <Pencil className="h-3 w-3 mr-1" /> Edit
             </Button>

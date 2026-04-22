@@ -20,7 +20,7 @@ import {
 } from '../components/ui/select'
 import { cn } from '../lib/utils'
 
-type TransactionFilter = 'all' | InventoryTransactionType
+type TransactionFilter = 'all' | 'stock-in' | 'stock-out'
 
 function formatDateTime(iso: string): string {
   const date = new Date(iso)
@@ -99,7 +99,6 @@ export default function Transactions(): JSX.Element {
                 <SelectItem value="all">All changes</SelectItem>
                 <SelectItem value="stock-in">Stock In</SelectItem>
                 <SelectItem value="stock-out">Stock Out</SelectItem>
-                <SelectItem value="stock-adjustment">Adjustment</SelectItem>
               </SelectContent>
             </Select>
           </div>

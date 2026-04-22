@@ -3,6 +3,7 @@ import { Search, Filter, RefreshCw, Package, Plus, Trash2, Download } from 'luci
 import { useInventory, InventoryFilters } from '../hooks/useInventory'
 import { InventoryTable } from '../components/inventory/InventoryTable'
 import { ItemSheet } from '../components/inventory/ItemSheet'
+import { StockAdjustDialog, type StockAdjustMode } from '../components/inventory/StockAdjustDialog'
 import { Input } from '../components/ui/input'
 import { Badge } from '../components/ui/badge'
 import {
@@ -42,6 +43,7 @@ export default function Inventory(): JSX.Element {
 
   const {
     items,
+    allItems,
     loading,
     vendors,
     categories,
@@ -58,6 +60,7 @@ export default function Inventory(): JSX.Element {
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<InventoryItem | null>(null)
+  const [adjustTarget, setAdjustTarget] = useState<InventoryItem | null>(null)
 
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -89,6 +92,10 @@ export default function Inventory(): JSX.Element {
     setSheetOpen(true)
   }
 
+  function openAdjust(item: InventoryItem): void {
+    setAdjustTarget(item)
+  }
+
   async function handleSheetSubmit(data: Omit<InventoryItem, 'id'>): Promise<void> {
     if (editTarget) {
       await updateItem(editTarget.id, data)
@@ -101,6 +108,18 @@ export default function Inventory(): JSX.Element {
   async function handleDelete(id: string): Promise<void> {
     await deleteItem(id)
     setSelectedIds(prev => prev.filter(sid => sid !== id))
+  }
+
+  async function handleAdjustSubmit(
+    item: InventoryItem,
+    mode: StockAdjustMode,
+    quantity: number
+  ): Promise<void> {
+    const latestItem = allItems.find((entry) => entry.id === item.id) ?? item
+    const delta = mode === 'stock-in' ? quantity : -quantity
+    await updateItem(latestItem.id, { onHand: latestItem.onHand + delta })
+    setSelectedIds(prev => prev.filter(id => id !== latestItem.id))
+    setAdjustTarget(null)
   }
 
   async function handleBulkDelete(): Promise<void> {
@@ -267,6 +286,7 @@ export default function Inventory(): JSX.Element {
         selectedIds={selectedIds}
         onSelectionChange={setSelectedIds}
         onEdit={openEdit}
+        onAdjust={openAdjust}
         onDelete={handleDelete}
         paginate={hasActiveFilters}
       />
@@ -282,6 +302,15 @@ export default function Inventory(): JSX.Element {
         binLocations={binLocations}
         palletNumbers={palletNumbers}
         onSubmit={handleSheetSubmit}
+      />
+
+      <StockAdjustDialog
+        open={adjustTarget != null}
+        onOpenChange={(open) => {
+          if (!open) setAdjustTarget(null)
+        }}
+        item={adjustTarget}
+        onSubmit={handleAdjustSubmit}
       />
 
       {/* Bulk delete confirmation */}
