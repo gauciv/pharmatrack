@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { Search, Filter, RefreshCw, Package, Plus, Trash2, Download } from 'lucide-react'
+import { toast } from 'sonner'
 import { useInventory, InventoryFilters } from '../hooks/useInventory'
 import { InventoryTable } from '../components/inventory/InventoryTable'
 import { ItemSheet } from '../components/inventory/ItemSheet'
@@ -29,6 +30,11 @@ import { exportInventoryCSV, exportInventoryPDF } from '../lib/inventory-export'
 import {
   ExportPreviewModal, buildExportFileName, type ExportFormat,
 } from '../components/ExportPreviewModal'
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message
+  return fallback
+}
 
 export default function Inventory(): JSX.Element {
   const [filters, setFilters] = useState<InventoryFilters>({
@@ -97,17 +103,31 @@ export default function Inventory(): JSX.Element {
   }
 
   async function handleSheetSubmit(data: Omit<InventoryItem, 'id'>): Promise<void> {
-    if (editTarget) {
-      await updateItem(editTarget.id, data)
-    } else {
-      await addItem(data)
+    const isEditing = editTarget != null
+
+    try {
+      if (editTarget) {
+        await updateItem(editTarget.id, data)
+      } else {
+        await addItem(data)
+      }
+
+      setSelectedIds(prev => prev.filter(id => id !== editTarget?.id))
+      toast.success(isEditing ? 'Item details updated.' : 'New inventory item added.')
+    } catch (error) {
+      toast.error(getErrorMessage(error, isEditing ? 'Unable to update item.' : 'Unable to add item.'))
+      throw error
     }
-    setSelectedIds(prev => prev.filter(id => id !== editTarget?.id))
   }
 
   async function handleDelete(id: string): Promise<void> {
-    await deleteItem(id)
-    setSelectedIds(prev => prev.filter(sid => sid !== id))
+    try {
+      await deleteItem(id)
+      setSelectedIds(prev => prev.filter(sid => sid !== id))
+      toast.success('Item deleted.')
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Unable to delete item.'))
+    }
   }
 
   async function handleAdjustSubmit(
@@ -117,15 +137,29 @@ export default function Inventory(): JSX.Element {
   ): Promise<void> {
     const latestItem = allItems.find((entry) => entry.id === item.id) ?? item
     const delta = mode === 'stock-in' ? quantity : -quantity
-    await updateItem(latestItem.id, { onHand: latestItem.onHand + delta })
-    setSelectedIds(prev => prev.filter(id => id !== latestItem.id))
-    setAdjustTarget(null)
+
+    try {
+      await updateItem(latestItem.id, { onHand: latestItem.onHand + delta })
+      setSelectedIds(prev => prev.filter(id => id !== latestItem.id))
+      setAdjustTarget(null)
+      toast.success(mode === 'stock-in' ? 'Stock in recorded.' : 'Stock out recorded.')
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Unable to adjust stock.'))
+      throw error
+    }
   }
 
   async function handleBulkDelete(): Promise<void> {
-    await deleteItems(selectedIds)
-    setSelectedIds([])
-    setBulkDeleteOpen(false)
+    const deleteCount = selectedIds.length
+
+    try {
+      await deleteItems(selectedIds)
+      setSelectedIds([])
+      setBulkDeleteOpen(false)
+      toast.success(`${deleteCount} item${deleteCount === 1 ? '' : 's'} deleted.`)
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Unable to delete selected items.'))
+    }
   }
 
   function resetFilters(): void {

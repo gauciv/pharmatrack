@@ -124,12 +124,14 @@ export function ItemSheet({
   const isEdit = item != null
   const [form, setForm] = useState<FormData>(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
   const [lotErrors, setLotErrors] = useState<Array<Partial<Record<'expiryDate' | 'quantity', string>>>>([])
 
   useEffect(() => {
     if (open) {
       setForm(item ? toFormData(item) : emptyForm)
+      setSubmitError(null)
       setErrors({})
       setLotErrors([])
     }
@@ -234,6 +236,7 @@ export function ItemSheet({
     e.preventDefault()
     if (!validate()) return
     setSaving(true)
+    setSubmitError(null)
     try {
       const lotTracking = form.trackExpiry
         ? form.lotTracking
@@ -263,6 +266,12 @@ export function ItemSheet({
         rowType: 'item',
       })
       onOpenChange(false)
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : (isEdit ? 'Unable to save item changes.' : 'Unable to add item.')
+      )
     } finally {
       setSaving(false)
     }
@@ -555,6 +564,11 @@ export function ItemSheet({
           </div>
 
           <SheetFooter className="shrink-0 px-6 py-4 border-t border-gray-200 dark:border-gray-800 dark:bg-gray-900">
+            {submitError && (
+              <p role="alert" className="w-full text-xs text-destructive mb-1">
+                {submitError}
+              </p>
+            )}
             <Button
               type="button"
               variant="outline"

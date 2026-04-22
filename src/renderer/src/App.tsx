@@ -1,12 +1,13 @@
 import { useState, useCallback } from 'react'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
-import { ThemeProvider } from './contexts/ThemeContext'
+import { ThemeProvider, useTheme } from './contexts/ThemeContext'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { DashboardLayout } from './components/layout/DashboardLayout'
 import { FirebaseSetupModal } from './components/FirebaseSetupModal'
 import { SplashScreen } from './components/SplashScreen'
 import { isFirebaseConfigured } from './lib/firebase'
+import { Toaster } from 'sonner'
 import Login from './pages/Login'
 import DashboardHome from './pages/DashboardHome'
 import Inventory from './pages/Inventory'
@@ -23,12 +24,11 @@ function wrap(child: JSX.Element): JSX.Element {
   )
 }
 
-function App(): JSX.Element {
-  const [showSplash, setShowSplash] = useState(true)
-  const hideSplash = useCallback(() => setShowSplash(false), [])
+function AppContent({ showSplash, hideSplash }: { showSplash: boolean; hideSplash: () => void }): JSX.Element {
+  const { theme } = useTheme()
 
   return (
-    <ThemeProvider>
+    <>
       {showSplash && <SplashScreen onFinished={hideSplash} />}
       <HashRouter>
         <FirebaseSetupModal open={!isFirebaseConfigured} />
@@ -46,6 +46,24 @@ function App(): JSX.Element {
           </Routes>
         </AuthProvider>
       </HashRouter>
+
+      <Toaster
+        position="top-right"
+        richColors
+        closeButton
+        theme={theme}
+      />
+    </>
+  )
+}
+
+function App(): JSX.Element {
+  const [showSplash, setShowSplash] = useState(true)
+  const hideSplash = useCallback(() => setShowSplash(false), [])
+
+  return (
+    <ThemeProvider>
+      <AppContent showSplash={showSplash} hideSplash={hideSplash} />
     </ThemeProvider>
   )
 }

@@ -60,6 +60,18 @@ export async function updateInventoryItem(
   await updateDoc(doc(db, COLLECTION, id), data)
 }
 
+export async function updateInventoryItemAndLogTransaction(
+  id: string,
+  data: Partial<InventoryItem>,
+  transaction: Omit<InventoryTransaction, 'id'>
+): Promise<void> {
+  requireFirebase('updateInventoryItemAndLogTransaction')
+  const batch = writeBatch(db)
+  batch.update(doc(db, COLLECTION, id), data)
+  batch.set(doc(collection(db, TRANSACTIONS_COLLECTION)), transaction)
+  await batch.commit()
+}
+
 export async function deleteInventoryItem(id: string): Promise<void> {
   requireFirebase('deleteInventoryItem')
   await deleteDoc(doc(db, COLLECTION, id))

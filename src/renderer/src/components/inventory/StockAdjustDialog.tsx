@@ -63,7 +63,9 @@ export function StockAdjustDialog({
   const currentOnHand = item?.onHand ?? 0
   const delta = hasValidQuantity ? (mode === 'stock-in' ? quantity : -quantity) : 0
   const nextOnHand = currentOnHand + delta
-  const willGoNegative = hasValidQuantity && nextOnHand < 0
+  const stockOutExceedsOnHand = mode === 'stock-out' && hasValidQuantity && quantity > currentOnHand
+  const stockOutUnavailable = mode === 'stock-out' && currentOnHand <= 0
+  const hasInvalidStockOut = stockOutUnavailable || stockOutExceedsOnHand
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
@@ -144,6 +146,18 @@ export function StockAdjustDialog({
               <p className="text-xs text-destructive">Enter a quantity greater than 0.</p>
             )}
 
+            {stockOutUnavailable && (
+              <p className="text-xs text-destructive">
+                Stock out is unavailable because on hand is 0 or below.
+              </p>
+            )}
+
+            {stockOutExceedsOnHand && !stockOutUnavailable && (
+              <p className="text-xs text-destructive">
+                Cannot deduct more than current on hand ({currentOnHand.toLocaleString()}).
+              </p>
+            )}
+
             {hasValidQuantity && (
               <div className="rounded-md border border-silver-200 dark:border-gray-700 p-3 space-y-1.5">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Preview</p>
@@ -153,9 +167,9 @@ export function StockAdjustDialog({
                 <p className="text-xs text-muted-foreground">
                   This saves as a {mode === 'stock-in' ? 'Stock In' : 'Stock Out'} transaction.
                 </p>
-                {willGoNegative && (
+                {mode === 'stock-in' && nextOnHand < 0 && (
                   <p className={cn('text-xs font-medium text-amber-700 dark:text-amber-400')}>
-                    Result will be negative on hand.
+                    Result remains negative on hand.
                   </p>
                 )}
               </div>
@@ -172,7 +186,7 @@ export function StockAdjustDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={!hasValidQuantity || submitting}>
+              <Button type="submit" disabled={!hasValidQuantity || hasInvalidStockOut || submitting}>
                 {submitting ? 'Saving...' : mode === 'stock-in' ? 'Apply Stock In' : 'Apply Stock Out'}
               </Button>
             </DialogFooter>
