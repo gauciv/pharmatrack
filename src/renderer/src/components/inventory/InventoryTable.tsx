@@ -52,6 +52,7 @@ import {
   getNextNonExpiredLot,
   getTrackedCoverage,
 } from '../../lib/inventory-expiry'
+import { splitMultiValue } from '../../lib/inventory-location'
 
 interface InventoryTableProps {
   items: InventoryItem[]
@@ -103,6 +104,20 @@ function LotStatusBadge({ expiryDate }: { expiryDate: string }): JSX.Element {
   if (daysUntil <= 90) return <Badge variant="destructive" className="text-[10px]">&lt; 3m</Badge>
   if (daysUntil < 365) return <Badge variant="warning" className="text-[10px]">&lt; 1y</Badge>
   return <Badge variant="success" className="text-[10px]">&gt; 1y</Badge>
+}
+
+function formatCompactMultiValue(value?: string | null): { text: string; tooltip: string } | null {
+  const values = splitMultiValue(value)
+  if (values.length === 0) return null
+  if (values.length <= 2) {
+    const text = values.join(', ')
+    return { text, tooltip: text }
+  }
+
+  return {
+    text: `${values[0]}, +${values.length - 1} more`,
+    tooltip: values.join(', '),
+  }
 }
 
 export function InventoryTable({
@@ -203,16 +218,36 @@ export function InventoryTable({
     }),
     columnHelper.accessor('binLocation', {
       header: 'Bin',
-      cell: info => info.getValue()
-        ? <span className="text-[11px] text-charcoal-700 dark:text-gray-300">{info.getValue()}</span>
-        : <span className="text-[11px] text-silver-400">—</span>,
+      cell: info => {
+        const compact = formatCompactMultiValue(info.getValue())
+        if (!compact) return <span className="text-[11px] text-silver-400">—</span>
+
+        return (
+          <span
+            className="block max-w-[145px] truncate text-[11px] text-charcoal-700 dark:text-gray-300"
+            title={compact.tooltip}
+          >
+            {compact.text}
+          </span>
+        )
+      },
       size: 145,
     }),
     columnHelper.accessor('palletNumber', {
       header: 'Pallet',
-      cell: info => info.getValue()
-        ? <span className="font-mono text-[11px] text-charcoal-700 dark:text-gray-300">{info.getValue()}</span>
-        : <span className="text-[11px] text-silver-400">—</span>,
+      cell: info => {
+        const compact = formatCompactMultiValue(info.getValue())
+        if (!compact) return <span className="text-[11px] text-silver-400">—</span>
+
+        return (
+          <span
+            className="block max-w-[110px] truncate font-mono text-[11px] text-charcoal-700 dark:text-gray-300"
+            title={compact.tooltip}
+          >
+            {compact.text}
+          </span>
+        )
+      },
       size: 110,
     }),
     columnHelper.accessor('onHand', {

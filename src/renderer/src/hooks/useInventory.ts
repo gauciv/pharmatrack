@@ -13,7 +13,7 @@ import {
 import { localStore } from '../lib/local-inventory-store'
 import { InventoryItem } from '../types/inventory'
 import { enrichInventoryItem, getExpiryStatus, type InventoryExpiryStatus } from '../lib/inventory-expiry'
-import { splitMultiValue } from '../lib/bin-pallet-reference'
+import { splitMultiValue } from '../lib/inventory-location'
 
 export interface InventoryFilters {
   search: string

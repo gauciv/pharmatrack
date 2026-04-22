@@ -28,18 +28,44 @@ export function useTransactions() {
     }
 
     let unsubscribe: (() => void) | undefined
+    let settled = false
+    const timeoutId = window.setTimeout(() => {
+      if (settled) return
+      settled = true
+      setError('Timed out loading transactions. Check your network or Firestore permissions.')
+      setLoading(false)
+    }, 15000)
+
+    const settle = () => {
+      if (settled) return
+      settled = true
+      window.clearTimeout(timeoutId)
+    }
 
     try {
-      unsubscribe = subscribeToInventoryTransactions((transactions) => {
-        setSourceTransactions(transactions)
-        setLoading(false)
-      })
+      unsubscribe = subscribeToInventoryTransactions(
+        (transactions) => {
+          settle()
+          setSourceTransactions(transactions)
+          setError(null)
+          setLoading(false)
+        },
+        (listenerError) => {
+          settle()
+          setError(listenerError.message)
+          setLoading(false)
+        }
+      )
     } catch (err) {
+      settle()
       setError((err as Error).message)
       setLoading(false)
     }
 
-    return () => unsubscribe?.()
+    return () => {
+      settle()
+      unsubscribe?.()
+    }
   }, [])
 
   const transactions = useMemo(() => sortTransactions(sourceTransactions), [sourceTransactions])

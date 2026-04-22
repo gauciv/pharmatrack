@@ -11,6 +11,7 @@
     "preview": "node scripts/unset-electron-node.js electron-vite preview",
     "start": "node scripts/unset-electron-node.js electron-vite preview",
     "typecheck": "tsc --noEmit",
+    "migrate:bin-pallet": "node scripts/migrate-bin-pallet-to-firestore.mjs",
     "postinstall": "node scripts/fix-cac-esm.js"
   },
   "dependencies": {
@@ -49,6 +50,7 @@
     "electron": "^31.0.1",
     "electron-builder": "^24.13.3",
     "electron-vite": "^2.3.0",
+    "firebase-admin": "^13.8.0",
     "png-to-ico": "^3.0.1",
     "postcss": "^8.4.38",
     "sharp": "^0.34.5",

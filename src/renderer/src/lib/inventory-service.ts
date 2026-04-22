@@ -10,6 +10,7 @@ import {
   orderBy,
   QuerySnapshot,
   DocumentData,
+  FirestoreError,
   writeBatch
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from './firebase'
@@ -113,7 +114,8 @@ export async function addInventoryTransaction(
 }
 
 export function subscribeToInventoryTransactions(
-  callback: (transactions: InventoryTransaction[]) => void
+  callback: (transactions: InventoryTransaction[]) => void,
+  onError?: (error: FirestoreError) => void
 ): () => void {
   requireFirebase('subscribeToInventoryTransactions')
   const transactionQuery = query(
@@ -121,11 +123,17 @@ export function subscribeToInventoryTransactions(
     orderBy('recordedAt', 'desc')
   )
 
-  return onSnapshot(transactionQuery, (snapshot: QuerySnapshot<DocumentData>) => {
-    const transactions = snapshot.docs.map((docItem) => ({
-      id: docItem.id,
-      ...docItem.data(),
-    } as InventoryTransaction))
-    callback(transactions)
-  })
+  return onSnapshot(
+    transactionQuery,
+    (snapshot: QuerySnapshot<DocumentData>) => {
+      const transactions = snapshot.docs.map((docItem) => ({
+        id: docItem.id,
+        ...docItem.data(),
+      } as InventoryTransaction))
+      callback(transactions)
+    },
+    (error) => {
+      onError?.(error)
+    }
+  )
 }
