@@ -25,6 +25,11 @@ export interface InventoryFilters {
   palletNumber?: string
 }
 
+function isPermissionDeniedError(err: unknown): boolean {
+  return typeof err === 'object' && err != null && 'code' in err &&
+    (err as { code?: string }).code === 'permission-denied'
+}
+
 function getTransactionType(delta: number): 'stock-in' | 'stock-out' | 'stock-adjustment' {
   if (delta > 0) return 'stock-in'
   if (delta < 0) return 'stock-out'
@@ -111,19 +116,30 @@ export function useInventory(filters: InventoryFilters) {
     if (hasOnHandUpdate && currentItem) {
       const newOnHand = data.onHand as number
       const delta = newOnHand - currentItem.onHand
-      await addInventoryTransaction({
-        itemId: currentItem.id,
-        itemCode: data.itemCode ?? currentItem.itemCode,
-        description: data.description ?? currentItem.description,
-        vendor: data.vendor ?? currentItem.vendor,
-        previousOnHand: currentItem.onHand,
-        newOnHand,
-        delta,
-        type: getTransactionType(delta),
-        recordedAt: new Date().toISOString(),
-        binLocation: data.binLocation ?? currentItem.binLocation ?? null,
-        palletNumber: data.palletNumber ?? currentItem.palletNumber ?? null,
-      })
+      try {
+        await addInventoryTransaction({
+          itemId: currentItem.id,
+          itemCode: data.itemCode ?? currentItem.itemCode,
+          description: data.description ?? currentItem.description,
+          vendor: data.vendor ?? currentItem.vendor,
+          previousOnHand: currentItem.onHand,
+          newOnHand,
+          delta,
+          type: getTransactionType(delta),
+          recordedAt: new Date().toISOString(),
+          binLocation: data.binLocation ?? currentItem.binLocation ?? null,
+          palletNumber: data.palletNumber ?? currentItem.palletNumber ?? null,
+        })
+      } catch (err) {
+        // Keep inventory updates successful even if transaction rules are not deployed yet.
+        if (isPermissionDeniedError(err)) {
+          console.warn(
+            'Inventory updated, but transaction logging is blocked by Firestore rules on inventory_transactions.'
+          )
+          return
+        }
+        throw err
+      }
     }
   }, [sourceItems])
 

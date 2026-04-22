@@ -51,6 +51,32 @@ VITE_FIREBASE_APP_ID=
 
 If Firebase is not configured, the app will show an in-app setup prompt on launch.
 
+### Firestore Rules
+
+The app reads/writes both `inventory` and `inventory_transactions` collections.
+If `inventory_transactions` is not allowed, the Transactions page will show a permission error.
+
+Use the rules in `firestore.rules`, then deploy them from Firebase Console or CLI.
+
+Minimum required rules:
+
+```text
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /inventory/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /inventory_transactions/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+```
+
 ## Available Scripts
 
 ```bash

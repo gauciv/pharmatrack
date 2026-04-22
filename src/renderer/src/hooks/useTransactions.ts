@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { FirestoreError } from 'firebase/firestore'
 import { isFirebaseConfigured } from '../lib/firebase'
 import { localStore } from '../lib/local-inventory-store'
 import { subscribeToInventoryTransactions } from '../lib/inventory-service'
@@ -11,6 +12,13 @@ function sortTransactions(transactions: InventoryTransaction[]): InventoryTransa
     if (!Number.isNaN(timeA) && !Number.isNaN(timeB)) return timeB - timeA
     return b.recordedAt.localeCompare(a.recordedAt)
   })
+}
+
+function getTransactionsErrorMessage(err: Pick<FirestoreError, 'code' | 'message'>): string {
+  if (err.code === 'permission-denied') {
+    return 'Firestore rules are blocking inventory_transactions. Allow authenticated read/write for this collection.'
+  }
+  return err.message
 }
 
 export function useTransactions() {
@@ -52,7 +60,7 @@ export function useTransactions() {
         },
         (listenerError) => {
           settle()
-          setError(listenerError.message)
+          setError(getTransactionsErrorMessage(listenerError))
           setLoading(false)
         }
       )
